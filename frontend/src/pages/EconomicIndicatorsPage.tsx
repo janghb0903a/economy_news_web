@@ -182,11 +182,42 @@ function removeUnreleasedPeriod(
   });
 }
 
+function normalizeMonthlySeries(
+  event: IndicatorEvent,
+  rows: { label: string; date?: string | null; value: number }[]
+) {
+  const byMonth = new Map<string, { label: string; date?: string | null; value: number; sortTime: number }>();
+  rows.forEach((point, index) => {
+    const pointDate = parseSeriesDate(point, event);
+    if (!pointDate) {
+      const fallbackKey = `unknown-${index}`;
+      byMonth.set(fallbackKey, { ...point, label: chartMonthLabel(point.label), sortTime: index });
+      return;
+    }
+    const key = `${pointDate.getFullYear()}-${String(pointDate.getMonth() + 1).padStart(2, "0")}`;
+    const sortTime = pointDate.getTime();
+    const existing = byMonth.get(key);
+    if (!existing || sortTime >= existing.sortTime) {
+      byMonth.set(key, {
+        label: `${pointDate.getMonth() + 1}월`,
+        date: point.date,
+        value: point.value,
+        sortTime
+      });
+    }
+  });
+  return Array.from(byMonth.values())
+    .sort((a, b) => a.sortTime - b.sortTime)
+    .slice(-12)
+    .map(({ sortTime: _sortTime, ...point }) => point);
+}
+
 function applyObservation(event: IndicatorEvent, observation?: EconomicIndicatorObservation): IndicatorEvent {
   if (!hasLiveObservation(observation)) {
     return observation ? { ...event, observation } : event;
   }
-  const series = observation.series.map((point) => ({ label: chartMonthLabel(point.date || point.label), date: point.date, value: point.value }));
+  const rawSeries = observation.series.map((point) => ({ label: point.label, date: point.date, value: point.value }));
+  const series = normalizeMonthlySeries(event, rawSeries);
   if (isFutureEvent(event)) {
     const releasedSeries = removeUnreleasedPeriod(event, series);
     const previousReleasedValue = releasedSeries.length > 0 ? releasedSeries[releasedSeries.length - 1].value : observation.previous_value ?? event.previousValue;
