@@ -92,6 +92,8 @@ COMPANY_SYMBOLS.update(
     {
         "삼성전자": {"symbol": "005930.KS", "name": "삼성전자", "peers": ["000660.KS", "373220.KS", "207940.KS"]},
         "samsung electronics": {"symbol": "005930.KS", "name": "삼성전자", "peers": ["000660.KS", "373220.KS", "207940.KS"]},
+        "삼성전기": {"symbol": "009150.KS", "name": "삼성전기", "peers": ["005930.KS", "011070.KS", "066570.KS"]},
+        "samsung electro-mechanics": {"symbol": "009150.KS", "name": "삼성전기", "peers": ["005930.KS", "011070.KS", "066570.KS"]},
         "sk하이닉스": {"symbol": "000660.KS", "name": "SK하이닉스", "peers": ["005930.KS", "MU.US", "TSM.US"]},
         "sk hynix": {"symbol": "000660.KS", "name": "SK하이닉스", "peers": ["005930.KS", "MU.US", "TSM.US"]},
         "현대차": {"symbol": "005380.KS", "name": "현대차", "peers": ["000270.KS", "GM.US", "F.US"]},
@@ -101,6 +103,8 @@ COMPANY_SYMBOLS.update(
         "naver": {"symbol": "035420.KS", "name": "NAVER", "peers": ["035720.KS", "GOOGL.US", "META.US"]},
         "카카오": {"symbol": "035720.KS", "name": "카카오", "peers": ["035420.KS", "META.US", "GOOGL.US"]},
         "lg에너지솔루션": {"symbol": "373220.KS", "name": "LG에너지솔루션", "peers": ["006400.KS", "051910.KS", "TSLA.US"]},
+        "lg전자": {"symbol": "066570.KS", "name": "LG전자", "peers": ["005930.KS", "009150.KS", "011070.KS"]},
+        "lg이노텍": {"symbol": "011070.KS", "name": "LG이노텍", "peers": ["009150.KS", "005930.KS", "066570.KS"]},
         "lg화학": {"symbol": "051910.KS", "name": "LG화학", "peers": ["373220.KS", "006400.KS", "005930.KS"]},
         "삼성sdi": {"symbol": "006400.KS", "name": "삼성SDI", "peers": ["373220.KS", "051910.KS", "TSLA.US"]},
         "삼성바이오로직스": {"symbol": "207940.KS", "name": "삼성바이오로직스", "peers": ["068270.KS", "005930.KS"]},
