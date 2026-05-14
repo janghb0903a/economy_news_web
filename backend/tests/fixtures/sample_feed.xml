@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<rss version="2.0">
+  <channel>
+    <title>Sample Economy Feed</title>
+    <item>
+      <title>한국은행 기준금리 동결, 물가 전망 주목</title>
+      <link>https://example.com/news/1?utm_source=test</link>
+      <pubDate>Thu, 14 May 2026 09:00:00 +0900</pubDate>
+      <description>금융통화위원회가 기준금리를 동결했다.</description>
+      <author>desk@example.com</author>
+    </item>
+    <item>
+      <title>Global markets watch inflation data</title>
+      <link>https://example.com/news/2</link>
+      <pubDate>Thu, 14 May 2026 01:00:00 GMT</pubDate>
+      <description>Central bank policy remains in focus.</description>
+    </item>
+  </channel>
+</rss>

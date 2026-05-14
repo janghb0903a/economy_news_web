@@ -1,0 +1,16 @@
+[
+  {
+    "title": "한국은행 기준금리 동결, 물가 전망 주목",
+    "region": "domestic",
+    "category": "bok",
+    "importance_score": 0.86,
+    "bok_relevance_score": 0.94
+  },
+  {
+    "title": "Global markets watch central bank inflation data",
+    "region": "global",
+    "category": "global_economy",
+    "importance_score": 0.72,
+    "bok_relevance_score": 0.12
+  }
+]
