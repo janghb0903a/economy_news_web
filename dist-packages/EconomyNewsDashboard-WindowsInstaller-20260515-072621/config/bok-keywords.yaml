@@ -1,0 +1,56 @@
+base_keywords:
+  - 한국은행
+  - 한은
+  - 금융통화위원회
+  - 금통위
+  - 기준금리
+  - 통화정책
+  - 물가안정
+  - 통화신용정책
+  - 경제전망
+  - 금융안정보고서
+  - 외환보유액
+  - 중앙은행
+  - BOK
+  - Bank of Korea
+
+person_names:
+  governors: []
+  monetary_policy_board_members: []
+
+groups:
+  기준금리:
+    - 기준금리
+    - 금리
+    - rate decision
+    - policy rate
+  금통위:
+    - 금융통화위원회
+    - 금통위
+    - monetary policy board
+  통화정책:
+    - 통화정책
+    - 통화신용정책
+    - monetary policy
+    - 긴축
+    - 완화
+  물가:
+    - 물가
+    - 물가안정
+    - 인플레이션
+    - inflation
+    - CPI
+  환율:
+    - 환율
+    - 원달러
+    - 원/달러
+    - 외환
+    - FX
+  금융안정:
+    - 금융안정
+    - 금융안정보고서
+    - 가계부채
+    - 부동산 PF
+  외환보유액:
+    - 외환보유액
+    - foreign reserves
