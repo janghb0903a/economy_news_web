@@ -62,7 +62,7 @@ C:\EconomyNewsDashboard
 개발용으로 직접 실행하려면 Python과 Node.js가 필요합니다.
 
 ```powershell
-cd C:\path\to\economy_news_web
+cd <프로젝트_폴더>
 Copy-Item .env.example .env
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
@@ -74,7 +74,7 @@ uvicorn app.main:app --host 127.0.0.1 --port 8000
 새 PowerShell에서 프론트엔드를 실행합니다.
 
 ```powershell
-cd C:\path\to\economy_news_web\frontend
+cd <프로젝트_폴더>\frontend
 npm install
 npm run dev
 ```
@@ -167,7 +167,7 @@ PDF 저장은 AI 기능 없이 Markdown 내용을 PDF로 변환하는 방식입�
 `docker-compose.yml`은 현재 Windows 설치 패키지나 일반 로컬 실행에서 자동으로 사용되지 않습니다. Docker Desktop으로 개발 환경을 띄우고 싶을 때 쓰는 선택용 실행 방식입니다.
 
 ```powershell
-cd C:\path\to\economy_news_web
+cd <프로젝트_폴더>
 Copy-Item .env.example .env
 docker compose up --build
 ```
@@ -177,7 +177,7 @@ docker compose up --build
 ## 테스트
 
 ```powershell
-cd C:\path\to\economy_news_web
+cd <프로젝트_폴더>
 .\.venv\Scripts\Activate.ps1
 pytest backend\tests
 cd frontend
