@@ -1,0 +1,9 @@
+{
+  "name": "economy-news-dashboard-control",
+  "version": "1.0.0",
+  "private": true,
+  "main": "main.js",
+  "devDependencies": {
+    "electron": "30.5.1"
+  }
+}

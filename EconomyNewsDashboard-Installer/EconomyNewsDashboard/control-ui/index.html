@@ -1,0 +1,520 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Economy News Dashboard Control</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f3f4f6;
+      --panel: rgba(255, 255, 255, 0.9);
+      --panel-solid: #ffffff;
+      --line: #e5e7eb;
+      --text: #202020;
+      --muted: #667085;
+      --blue: #0067c0;
+      --blue-hover: #005a9e;
+      --green: #107c10;
+      --red: #c42b1c;
+      --soft-blue: #eaf4ff;
+      --shadow: 0 22px 58px rgba(15, 23, 42, 0.10);
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background:
+        radial-gradient(circle at 7% 0%, rgba(0, 103, 192, 0.14), transparent 27%),
+        radial-gradient(circle at 92% 5%, rgba(16, 124, 16, 0.11), transparent 30%),
+        var(--bg);
+      color: var(--text);
+      font-family: "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+      overflow: hidden;
+    }
+
+    .shell {
+      height: 100vh;
+      min-height: 600px;
+      padding: 30px;
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr);
+      gap: 24px;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+      min-width: 0;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      min-width: 0;
+    }
+
+    .logo {
+      width: 50px;
+      height: 50px;
+      border-radius: 14px;
+      display: grid;
+      place-items: center;
+      background: var(--blue);
+      color: white;
+      box-shadow: 0 12px 24px rgba(0, 103, 192, 0.23);
+      flex: 0 0 auto;
+    }
+
+    .logo span {
+      width: 24px;
+      height: 28px;
+      border: 3px solid currentColor;
+      border-radius: 4px;
+      position: relative;
+    }
+
+    .logo span::before,
+    .logo span::after {
+      content: "";
+      position: absolute;
+      left: 5px;
+      right: 5px;
+      height: 3px;
+      border-radius: 99px;
+      background: currentColor;
+    }
+
+    .logo span::before { top: 7px; box-shadow: 0 8px 0 currentColor; }
+    .logo span::after { bottom: 5px; right: 11px; }
+
+    h1 {
+      margin: 0;
+      font-family: "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif;
+      font-size: 30px;
+      line-height: 1.12;
+      font-weight: 650;
+      letter-spacing: 0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .sub {
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      border: 1px solid rgba(0, 0, 0, 0.06);
+      border-radius: 999px;
+      padding: 8px 14px;
+      background: rgba(255, 255, 255, 0.82);
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 650;
+      white-space: nowrap;
+      box-shadow: 0 8px 28px rgba(15, 23, 42, 0.06);
+    }
+
+    .dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 99px;
+      background: #98a2b3;
+    }
+
+    .dot.running { background: var(--green); box-shadow: 0 0 0 4px rgba(16, 124, 16, 0.14); }
+    .dot.busy { background: #f59e0b; box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.16); }
+
+    .content {
+      min-height: 0;
+      display: grid;
+      grid-template-columns: minmax(520px, 1.15fr) minmax(520px, 0.92fr);
+      gap: 20px;
+    }
+
+    .panel {
+      border: 1px solid rgba(0, 0, 0, 0.08);
+      border-radius: 18px;
+      background: var(--panel);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(22px);
+      min-width: 0;
+    }
+
+    .main-panel {
+      padding: 24px;
+      display: grid;
+      align-content: start;
+      gap: 18px;
+    }
+
+    .section-title {
+      margin: 0 0 6px;
+      font-size: 19px;
+      font-weight: 650;
+      letter-spacing: 0;
+    }
+
+    .desc {
+      margin: 0;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.55;
+    }
+
+    .path-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 84px;
+      gap: 10px;
+    }
+
+    input {
+      width: 100%;
+      height: 38px;
+      border: 1px solid #d8d8d8;
+      border-radius: 8px;
+      background: white;
+      padding: 0 12px;
+      color: var(--text);
+      font: inherit;
+      outline: none;
+    }
+
+    input:focus {
+      border-color: var(--blue);
+      box-shadow: inset 0 -2px 0 var(--blue);
+    }
+
+    button {
+      height: 36px;
+      border: 1px solid #d6d6d6;
+      border-radius: 8px;
+      padding: 0 14px;
+      background: white;
+      color: var(--text);
+      font: inherit;
+      font-weight: 650;
+      cursor: pointer;
+      transition: background 120ms ease, border-color 120ms ease, transform 120ms ease;
+      white-space: nowrap;
+    }
+
+    button:hover { background: #f7f7f7; }
+    button:active { transform: translateY(1px); }
+    button:disabled {
+      cursor: not-allowed;
+      opacity: 0.46;
+      transform: none;
+      box-shadow: none;
+    }
+    button:disabled:hover { background: white; }
+    button.primary { background: var(--blue); border-color: var(--blue); color: white; }
+    button.primary:hover { background: var(--blue-hover); }
+    button.green { background: var(--green); border-color: var(--green); color: white; }
+    button.red { color: var(--red); border-color: rgba(196, 43, 28, 0.3); }
+
+    .status-card {
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: rgba(255, 255, 255, 0.68);
+      padding: 14px;
+      display: grid;
+      gap: 10px;
+    }
+
+    .status-line {
+      display: grid;
+      grid-template-columns: 92px minmax(0, 1fr);
+      align-items: center;
+      gap: 12px;
+      font-size: 14px;
+    }
+
+    .label { color: var(--muted); }
+    .status-value { font-weight: 650; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .url {
+      color: var(--blue);
+      font-weight: 650;
+      border: 0;
+      background: transparent;
+      padding: 0;
+      height: auto;
+      text-align: left;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .url:hover { background: transparent; text-decoration: underline; }
+
+    .helper-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .log-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      height: 34px;
+      padding: 0 12px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.74);
+      color: #344054;
+      font-size: 12px;
+      font-weight: 650;
+      flex: 0 0 auto;
+    }
+
+    .log-chip svg { width: 15px; height: 15px; }
+
+    .toast {
+      min-height: 20px;
+      color: var(--muted);
+      font-size: 12px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .actions {
+      padding: 14px;
+      display: grid;
+      gap: 10px;
+      align-content: stretch;
+    }
+
+    .action {
+      display: grid;
+      grid-template-columns: 44px minmax(0, 1fr) 104px;
+      align-items: center;
+      gap: 14px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: rgba(255, 255, 255, 0.74);
+      padding: 12px;
+      min-height: 74px;
+    }
+
+    .num {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      display: grid;
+      place-items: center;
+      background: var(--soft-blue);
+      color: var(--blue);
+      font-weight: 750;
+    }
+
+    .action strong {
+      display: block;
+      font-size: 15px;
+      margin-bottom: 3px;
+      letter-spacing: 0;
+    }
+
+    .action small {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .exit-row {
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      padding: 2px 8px 4px;
+    }
+
+    @media (max-width: 1250px) {
+      body { overflow: auto; }
+      .shell { height: auto; }
+      .content { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <div class="topbar">
+      <div class="brand">
+        <div class="logo" aria-hidden="true"><span></span></div>
+        <div>
+          <h1>Economy News Dashboard</h1>
+          <div class="sub">설치 및 서비스 제어</div>
+        </div>
+      </div>
+      <div class="pill"><span id="dot" class="dot"></span><span id="statusText">확인 중</span></div>
+    </div>
+
+    <section class="content">
+      <div class="panel main-panel">
+        <div>
+          <h2 class="section-title">설치 위치</h2>
+          <p class="desc">기본 경로는 <strong>C:\EconomyNewsDashboard</strong>입니다. 필요하면 변경 버튼으로 설치할 폴더를 선택하세요.</p>
+        </div>
+
+        <div class="path-row">
+          <input id="installPath" spellcheck="false" />
+          <button id="choosePath">변경</button>
+        </div>
+
+        <div class="status-card">
+          <div class="status-line">
+            <span class="label">서비스</span>
+            <span id="serviceState" class="status-value">확인 중</span>
+          </div>
+          <div class="status-line">
+            <span class="label">접속 주소</span>
+            <button id="openUrl" class="url" type="button">http://127.0.0.1:8000</button>
+          </div>
+        </div>
+
+        <div class="helper-row">
+          <span>로그는 화면에 계속 표시하지 않습니다. 버튼을 누르면 별도 창에서 실시간으로 확인할 수 있습니다.</span>
+          <button id="openLog" class="log-chip" type="button" title="실시간 로그 보기">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M7 7h10M7 12h10M7 17h6" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+              <path d="M5 3h14a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z" stroke="currentColor" stroke-width="2" />
+            </svg>
+            로그 보기
+          </button>
+        </div>
+
+        <div id="toast" class="toast"></div>
+      </div>
+
+      <div class="panel actions">
+        <div class="action">
+          <div class="num">1</div>
+          <div><strong>설치 / 초기화</strong><small>선택한 경로로 앱 파일을 배치하고 DB를 준비합니다.</small></div>
+          <button id="installButton" class="primary" data-action="install">실행</button>
+        </div>
+        <div class="action">
+          <div class="num">2</div>
+          <div><strong>시작</strong><small>백엔드 서비스를 숨김 실행합니다.</small></div>
+          <button id="startButton" class="green" data-action="start">시작</button>
+        </div>
+        <div class="action">
+          <div class="num">3</div>
+          <div><strong>중지</strong><small>실행 중인 로컬 서비스를 종료합니다.</small></div>
+          <button id="stopButton" data-action="stop">중지</button>
+        </div>
+        <div class="action">
+          <div class="num">4</div>
+          <div><strong>접속</strong><small>브라우저에서 대시보드를 엽니다.</small></div>
+          <button id="connectButton" data-action="open">접속</button>
+        </div>
+        <div class="exit-row">
+          <button class="red" onclick="window.close()">종료</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const installPath = document.getElementById("installPath");
+    const statusText = document.getElementById("statusText");
+    const serviceState = document.getElementById("serviceState");
+    const toast = document.getElementById("toast");
+    const dot = document.getElementById("dot");
+    const actionButtons = Array.from(document.querySelectorAll("[data-action]"));
+    const installButton = document.getElementById("installButton");
+    const startButton = document.getElementById("startButton");
+    const stopButton = document.getElementById("stopButton");
+    const connectButton = document.getElementById("connectButton");
+    let busyLabel = "";
+    let isRunning = false;
+
+    function applyButtonState() {
+      const busy = Boolean(busyLabel);
+      installButton.disabled = busy;
+      startButton.disabled = busy || isRunning;
+      stopButton.disabled = busy || !isRunning;
+      connectButton.disabled = busy || !isRunning;
+    }
+
+    function applyStatus(text) {
+      if (busyLabel) {
+        dot.classList.remove("running");
+        dot.classList.add("busy");
+        statusText.textContent = busyLabel;
+        serviceState.textContent = busyLabel;
+        applyButtonState();
+        return;
+      }
+      isRunning = /Running|실행 중/i.test(text || "");
+      dot.classList.toggle("running", isRunning);
+      dot.classList.remove("busy");
+      statusText.textContent = isRunning ? "실행 중" : "중지됨";
+      serviceState.textContent = isRunning ? text.split(/\r?\n/)[0] : "중지됨";
+      applyButtonState();
+    }
+
+    function busyText(action) {
+      if (action === "install") return "설치 중";
+      if (action === "start") return "시작 중";
+      if (action === "stop") return "중지 중";
+      if (action === "open") return "접속 준비 중";
+      return "처리 중";
+    }
+
+    async function refresh() {
+      const state = await window.controlApi.initialState();
+      if (!installPath.value) installPath.value = state.installPath;
+      applyStatus(state.status);
+    }
+
+    document.getElementById("choosePath").addEventListener("click", async () => {
+      const selected = await window.controlApi.choosePath();
+      if (selected) installPath.value = selected;
+    });
+
+    document.getElementById("openUrl").addEventListener("click", () => {
+      window.controlApi.openUrl();
+    });
+
+    actionButtons.forEach((button) => {
+      button.addEventListener("click", async () => {
+        if (button.disabled) return;
+        const action = button.dataset.action;
+        busyLabel = busyText(action);
+        toast.textContent = `${busyLabel}...`;
+        applyButtonState();
+        applyStatus("");
+        const result = await window.controlApi.run(action, installPath.value);
+        busyLabel = "";
+        toast.textContent = result.output || (result.ok ? "완료" : "실패");
+        await refresh();
+      });
+    });
+
+    document.getElementById("openLog").addEventListener("click", async () => {
+      const logPath = await window.controlApi.openLog();
+      toast.textContent = `로그 창을 열었습니다: ${logPath}`;
+    });
+
+    applyButtonState();
+    refresh();
+    setInterval(refresh, 2500);
+  </script>
+</body>
+</html>

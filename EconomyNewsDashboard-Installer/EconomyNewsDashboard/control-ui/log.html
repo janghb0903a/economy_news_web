@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Economy News Logs</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0f172a;
+      --panel: #111827;
+      --line: #263244;
+      --text: #e5e7eb;
+      --muted: #94a3b8;
+      --blue: #60a5fa;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Cascadia Mono", "Consolas", "Segoe UI", monospace;
+    }
+    header {
+      height: 58px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 0 18px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(17, 24, 39, 0.92);
+    }
+    h1 {
+      margin: 0;
+      font-family: "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+      font-size: 16px;
+      letter-spacing: 0;
+    }
+    .hint {
+      color: var(--muted);
+      font-family: "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+      font-size: 12px;
+    }
+    pre {
+      margin: 0;
+      padding: 18px;
+      height: calc(100vh - 58px);
+      overflow: auto;
+      white-space: pre-wrap;
+      word-break: break-word;
+      line-height: 1.55;
+      font-size: 13px;
+    }
+    .empty { color: var(--muted); }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>실시간 작업 로그</h1>
+    <div class="hint">작업이 진행되면 자동으로 아래에 추가됩니다.</div>
+  </header>
+  <pre id="logs" class="empty">아직 표시할 로그가 없습니다.</pre>
+  <script>
+    const logs = document.getElementById("logs");
+    function render(lines) {
+      if (!lines || lines.length === 0) {
+        logs.textContent = "아직 표시할 로그가 없습니다.";
+        logs.classList.add("empty");
+        return;
+      }
+      logs.classList.remove("empty");
+      logs.textContent = lines.join("\n");
+      logs.scrollTop = logs.scrollHeight;
+    }
+    window.controlApi.logLines().then(render);
+    window.controlApi.onLogUpdate(render);
+  </script>
+</body>
+</html>
