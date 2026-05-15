@@ -52,7 +52,7 @@ export function categoryLabel(value: string) {
 export function conciseText(value?: string | null, maxChars = 520) {
   const text = stripHtml(value).replace(/\s+/g, " ").trim();
   if (text.length <= maxChars) return text;
-  const sentences = text.split(/(?<=[.!?。！？다])\s+/);
+  const sentences = text.split(/(?<=[.!?。다])\s+/);
   let result = "";
   for (const sentence of sentences) {
     if ((result + " " + sentence).trim().length > maxChars) break;

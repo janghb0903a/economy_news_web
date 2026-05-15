@@ -1,6 +1,7 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import type { ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowDown, ArrowRight, ArrowUp, CalendarClock, CheckCircle2, Clock, ExternalLink, Info, LineChart as LineChartIcon, RefreshCw, Search, ShieldAlert } from "lucide-react";
+import { ArrowDown, ArrowRight, ArrowUp, CalendarClock, CalendarDays, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, Clock, ExternalLink, Info, LineChart as LineChartIcon, RefreshCw, Search, ShieldAlert, X } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { Badge, Button, Card, GhostButton } from "../components/ui";
@@ -34,6 +35,20 @@ type IndicatorEvent = {
   interpretation: Record<Exclude<Direction, "none">, string>;
   series: { label: string; date?: string | null; value: number }[];
   observation?: EconomicIndicatorObservation;
+};
+
+type SummaryModalState = {
+  label: string;
+  value: number;
+  icon: typeof CalendarClock;
+  items: IndicatorEvent[];
+} | null;
+
+type HeaderBlockProps = {
+  title: string;
+  description: string;
+  actions?: ReactNode;
+  compact?: boolean;
 };
 
 const importanceLabel: Record<Importance, string> = {
@@ -104,6 +119,24 @@ function formatActualValue(event: IndicatorEvent) {
 
 function LoadingValue() {
   return <span className="inline-block h-4 w-14 animate-pulse rounded bg-muted align-middle" aria-label="정보를 가져오는 중입니다." />;
+}
+
+function ActualValueCell({ event, loading }: { event: IndicatorEvent; loading: boolean }) {
+  if (loading) return <LoadingValue />;
+  const value = formatActualValue(event);
+  const isEmpty = value === "-";
+  return (
+    <span
+      className={cn(
+        "inline-flex min-w-[66px] items-center justify-center rounded-md border px-2.5 py-1 text-sm font-bold shadow-sm",
+        isEmpty
+          ? "border-border bg-muted text-muted-foreground"
+          : "border-primary/25 bg-primary/10 text-primary dark:border-cyan-400/30 dark:bg-cyan-400/10 dark:text-cyan-200"
+      )}
+    >
+      {value}
+    </span>
+  );
 }
 
 function directionOf(event: IndicatorEvent): Direction {
@@ -260,7 +293,12 @@ function buildSeries(base: number, step: number, wave = 0.15) {
 
 function buildEvents(today: Date): IndicatorEvent[] {
   const date = (offset: number, hour: number, minute = 0) => withTime(addDays(today, offset), hour, minute);
-  return [
+  const fixedDate = (year: number, month: number, day: number, hour: number, minute = 0) => {
+    const next = new Date(year, month - 1, day);
+    next.setHours(hour, minute, 0, 0);
+    return next;
+  };
+  const events: IndicatorEvent[] = [
     {
       code: "KR_BASE_RATE",
       nameKo: "한국 기준금리",
@@ -268,7 +306,7 @@ function buildEvents(today: Date): IndicatorEvent[] {
       country: "KR",
       category: "rates",
       description: "한국은행 기준금리 결정은 국내 채권금리, 대출금리, 은행 수익성, 부동산 심리에 직접적인 영향을 줍니다.",
-      eventDate: date(1, 10),
+      eventDate: fixedDate(2026, 5, 28, 10),
       periodLabel: "5월 금통위",
       importance: "high",
       status: "scheduled",
@@ -277,7 +315,7 @@ function buildEvents(today: Date): IndicatorEvent[] {
       sourceName: "BOK ECOS / config",
       sourceStatus: "API 키 연결 전, config 일정 기준",
       actualValue: null,
-      previousValue: 3.5,
+      previousValue: 2.5,
       unit: "%",
       interpretation: {
         up: "기준금리 인상은 채권금리와 대출금리 부담을 키우고 부동산 및 가계소비에 압박으로 작용할 수 있습니다.",
@@ -293,7 +331,7 @@ function buildEvents(today: Date): IndicatorEvent[] {
       country: "KR",
       category: "inflation",
       description: "한국 소비자물가는 한국은행 통화정책과 실질소비 흐름을 판단하는 핵심 지표입니다.",
-      eventDate: date(-6, 8),
+      eventDate: fixedDate(2026, 5, 4, 8),
       periodLabel: "4월",
       importance: "high",
       status: "released",
@@ -318,7 +356,7 @@ function buildEvents(today: Date): IndicatorEvent[] {
       country: "US",
       category: "inflation",
       description: "미국 CPI는 Fed 금리 기대, 미국 국채금리, 달러, 원/달러 환율에 영향을 주는 핵심 이벤트입니다.",
-      eventDate: date(-1, 21, 30),
+      eventDate: fixedDate(2026, 5, 12, 21, 30),
       periodLabel: "4월",
       importance: "high",
       status: "released",
@@ -343,8 +381,7 @@ function buildEvents(today: Date): IndicatorEvent[] {
       country: "KR",
       category: "trade",
       description: "한국 수출입 지표는 제조업 경기, 무역수지, 원화 흐름, 반도체 업황 판단에 중요합니다.",
-      eventDate: date(6, 9),
-      dateOnly: true,
+      eventDate: fixedDate(2026, 5, 21, 9),
       periodLabel: "5월 1~20일",
       importance: "high",
       status: "scheduled",
@@ -369,7 +406,7 @@ function buildEvents(today: Date): IndicatorEvent[] {
       country: "US",
       category: "policy",
       description: "FOMC 결과와 성명서 문구는 글로벌 달러 유동성, 미국 국채금리, 국내 채권시장에 직접적인 영향을 줍니다.",
-      eventDate: date(4, 3),
+      eventDate: fixedDate(2026, 6, 18, 3),
       periodLabel: "5월 FOMC",
       importance: "high",
       status: "scheduled",
@@ -394,7 +431,7 @@ function buildEvents(today: Date): IndicatorEvent[] {
       country: "US",
       category: "employment",
       description: "미국 고용은 Fed 정책 기대와 글로벌 위험자산 선호를 움직이는 대표 지표입니다.",
-      eventDate: date(-5, 21, 30),
+      eventDate: fixedDate(2026, 5, 8, 21, 30),
       periodLabel: "4월",
       importance: "medium",
       status: "released",
@@ -419,7 +456,7 @@ function buildEvents(today: Date): IndicatorEvent[] {
       country: "US",
       category: "inflation",
       description: "미국 PCE는 Fed가 중시하는 물가 지표로 금리 기대와 달러 흐름에 영향을 줍니다.",
-      eventDate: date(7, 21, 30),
+      eventDate: fixedDate(2026, 5, 29, 21, 30),
       periodLabel: "4월",
       importance: "high",
       status: "scheduled",
@@ -463,6 +500,111 @@ function buildEvents(today: Date): IndicatorEvent[] {
       series: buildSeries(4.1, 0.03, 0.18)
     }
   ];
+
+  const setSchedule = (code: string, schedules: Array<{ eventDate: Date; periodLabel: string; status?: EventStatus; dateOnly?: boolean }>) => {
+    const base = events.find((event) => event.code === code);
+    if (!base) return;
+    schedules.forEach((schedule) => {
+      const exists = events.some((event) => event.code === code && event.eventDate.getTime() === schedule.eventDate.getTime());
+      if (exists) {
+        events.forEach((event) => {
+          if (event.code === code && event.eventDate.getTime() === schedule.eventDate.getTime()) {
+            event.periodLabel = schedule.periodLabel;
+            event.status = schedule.status ?? (schedule.eventDate.getTime() <= today.getTime() ? "released" : "scheduled");
+            event.dateOnly = schedule.dateOnly;
+          }
+        });
+        return;
+      }
+      events.push({
+        ...base,
+        eventDate: schedule.eventDate,
+        periodLabel: schedule.periodLabel,
+        status: schedule.status ?? (schedule.eventDate.getTime() <= today.getTime() ? "released" : "scheduled"),
+        dateOnly: schedule.dateOnly
+      });
+    });
+  };
+
+  setSchedule("KR_BASE_RATE", [
+    { eventDate: fixedDate(2026, 1, 15, 10), periodLabel: "1월 금통위" },
+    { eventDate: fixedDate(2026, 2, 25, 10), periodLabel: "2월 금통위" },
+    { eventDate: fixedDate(2026, 4, 10, 10), periodLabel: "4월 금통위" },
+    { eventDate: fixedDate(2026, 5, 28, 10), periodLabel: "5월 금통위" },
+    { eventDate: fixedDate(2026, 7, 9, 10), periodLabel: "7월 금통위" },
+    { eventDate: fixedDate(2026, 8, 27, 10), periodLabel: "8월 금통위" },
+    { eventDate: fixedDate(2026, 10, 1, 10), periodLabel: "10월 금통위" },
+    { eventDate: fixedDate(2026, 11, 26, 10), periodLabel: "11월 금통위" }
+  ]);
+
+  setSchedule("US_CPI", [
+    { eventDate: fixedDate(2026, 1, 13, 22, 30), periodLabel: "2025년 12월" },
+    { eventDate: fixedDate(2026, 2, 13, 22, 30), periodLabel: "1월" },
+    { eventDate: fixedDate(2026, 3, 11, 21, 30), periodLabel: "2월" },
+    { eventDate: fixedDate(2026, 4, 10, 21, 30), periodLabel: "3월" },
+    { eventDate: fixedDate(2026, 5, 12, 21, 30), periodLabel: "4월" },
+    { eventDate: fixedDate(2026, 6, 10, 21, 30), periodLabel: "5월" },
+    { eventDate: fixedDate(2026, 7, 14, 21, 30), periodLabel: "6월" },
+    { eventDate: fixedDate(2026, 8, 12, 21, 30), periodLabel: "7월" },
+    { eventDate: fixedDate(2026, 9, 11, 21, 30), periodLabel: "8월" },
+    { eventDate: fixedDate(2026, 10, 14, 21, 30), periodLabel: "9월" },
+    { eventDate: fixedDate(2026, 11, 10, 22, 30), periodLabel: "10월" },
+    { eventDate: fixedDate(2026, 12, 10, 22, 30), periodLabel: "11월" }
+  ]);
+
+  setSchedule("US_NFP", [
+    { eventDate: fixedDate(2026, 1, 9, 22, 30), periodLabel: "2025년 12월" },
+    { eventDate: fixedDate(2026, 2, 11, 22, 30), periodLabel: "1월" },
+    { eventDate: fixedDate(2026, 3, 6, 22, 30), periodLabel: "2월" },
+    { eventDate: fixedDate(2026, 4, 3, 21, 30), periodLabel: "3월" },
+    { eventDate: fixedDate(2026, 5, 8, 21, 30), periodLabel: "4월" },
+    { eventDate: fixedDate(2026, 6, 5, 21, 30), periodLabel: "5월" },
+    { eventDate: fixedDate(2026, 7, 2, 21, 30), periodLabel: "6월" },
+    { eventDate: fixedDate(2026, 8, 7, 21, 30), periodLabel: "7월" },
+    { eventDate: fixedDate(2026, 9, 4, 21, 30), periodLabel: "8월" },
+    { eventDate: fixedDate(2026, 10, 2, 21, 30), periodLabel: "9월" },
+    { eventDate: fixedDate(2026, 11, 6, 22, 30), periodLabel: "10월" },
+    { eventDate: fixedDate(2026, 12, 4, 22, 30), periodLabel: "11월" }
+  ]);
+
+  setSchedule("FOMC", [
+    { eventDate: fixedDate(2026, 1, 29, 4), periodLabel: "1월 FOMC" },
+    { eventDate: fixedDate(2026, 3, 19, 3), periodLabel: "3월 FOMC" },
+    { eventDate: fixedDate(2026, 4, 30, 3), periodLabel: "4월 FOMC" },
+    { eventDate: fixedDate(2026, 6, 18, 3), periodLabel: "6월 FOMC" },
+    { eventDate: fixedDate(2026, 7, 30, 3), periodLabel: "7월 FOMC" },
+    { eventDate: fixedDate(2026, 9, 17, 3), periodLabel: "9월 FOMC" },
+    { eventDate: fixedDate(2026, 10, 29, 3), periodLabel: "10월 FOMC" },
+    { eventDate: fixedDate(2026, 12, 10, 4), periodLabel: "12월 FOMC" }
+  ]);
+
+  setSchedule("US_PCE", [
+    { eventDate: fixedDate(2026, 1, 22, 24), periodLabel: "2025년 10~11월" },
+    { eventDate: fixedDate(2026, 2, 20, 22, 30), periodLabel: "2025년 12월" },
+    { eventDate: fixedDate(2026, 3, 13, 21, 30), periodLabel: "1월" },
+    { eventDate: fixedDate(2026, 4, 9, 21, 30), periodLabel: "2월" },
+    { eventDate: fixedDate(2026, 4, 30, 21, 30), periodLabel: "3월" },
+    { eventDate: fixedDate(2026, 5, 28, 21, 30), periodLabel: "4월" },
+    { eventDate: fixedDate(2026, 6, 25, 21, 30), periodLabel: "5월" },
+    { eventDate: fixedDate(2026, 7, 30, 21, 30), periodLabel: "6월" },
+    { eventDate: fixedDate(2026, 8, 26, 21, 30), periodLabel: "7월" },
+    { eventDate: fixedDate(2026, 9, 30, 21, 30), periodLabel: "8월" },
+    { eventDate: fixedDate(2026, 10, 29, 21, 30), periodLabel: "9월" },
+    { eventDate: fixedDate(2026, 11, 25, 22, 30), periodLabel: "10월" },
+    { eventDate: fixedDate(2026, 12, 23, 22, 30), periodLabel: "11월" }
+  ]);
+
+  setSchedule("KR_CPI", [
+    { eventDate: fixedDate(2026, 5, 4, 8), periodLabel: "4월" }
+  ]);
+
+  setSchedule("KR_EXPORTS", [
+    { eventDate: fixedDate(2026, 5, 1, 9), periodLabel: "4월 전체" },
+    { eventDate: fixedDate(2026, 5, 11, 9), periodLabel: "5월 1~10일" },
+    { eventDate: fixedDate(2026, 5, 21, 9), periodLabel: "5월 1~20일" }
+  ]);
+
+  return events.sort((a, b) => a.eventDate.getTime() - b.eventDate.getTime());
 }
 
 function StatusBadge({ status }: { status: EventStatus }) {
@@ -480,10 +622,10 @@ function StatusBadge({ status }: { status: EventStatus }) {
 function ImportanceBadge({ importance }: { importance: Importance }) {
   const className =
     importance === "high"
-      ? "bg-primary/15 text-primary"
+      ? "border border-rose-200 bg-gradient-to-r from-orange-100 to-rose-100 text-rose-800 shadow-sm dark:border-rose-900/70 dark:from-orange-950 dark:to-rose-950 dark:text-rose-200"
       : importance === "medium"
-        ? "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200"
-        : "bg-muted text-muted-foreground";
+        ? "border border-amber-200 bg-gradient-to-r from-yellow-50 to-amber-100 text-amber-800 dark:border-amber-900/70 dark:from-yellow-950 dark:to-amber-950 dark:text-amber-200"
+        : "border border-emerald-200 bg-gradient-to-r from-emerald-50 to-lime-100 text-emerald-800 dark:border-emerald-900/70 dark:from-emerald-950 dark:to-lime-950 dark:text-emerald-200";
   return <Badge className={className}>{importanceLabel[importance]}</Badge>;
 }
 
@@ -572,17 +714,364 @@ function getRelatedArticles(event: IndicatorEvent, articles: Article[]) {
     .slice(0, 5);
 }
 
-function SummaryCard({ label, value, icon: Icon }: { label: string; value: number; icon: typeof CalendarClock }) {
+function HeaderBlock({ title, description, actions, compact = false }: HeaderBlockProps) {
+  const Heading = compact ? "h2" : "h1";
   return (
-    <Card className="p-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <div className="text-sm text-muted-foreground">{label}</div>
-          <div className="mt-1 text-3xl font-semibold">{value}</div>
-        </div>
-        <Icon className="text-primary" size={22} />
+    <div className="flex flex-wrap items-start justify-between gap-3">
+      <div className="min-w-0">
+        <Heading className={cn("heading-title", compact ? "heading-title-section" : "heading-title-page")}>{title}</Heading>
+        <p className={cn("heading-description", compact && "heading-description-section")}>{description}</p>
       </div>
-    </Card>
+      {actions ? <div className="flex shrink-0 items-center gap-2">{actions}</div> : null}
+    </div>
+  );
+}
+
+function SummaryCard({
+  label,
+  value,
+  icon: Icon,
+  items = [],
+  onOpen
+}: {
+  label: string;
+  value: number;
+  icon: typeof CalendarClock;
+  items?: IndicatorEvent[];
+  onOpen?: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      className="group block w-full rounded-md text-left focus:outline-none focus:ring-2 focus:ring-primary/30"
+      aria-label={`${label} 목록 보기`}
+    >
+      <Card className="relative overflow-hidden p-4 transition duration-200 group-hover:-translate-y-0.5 group-hover:border-primary/60 group-hover:bg-primary/5 group-hover:shadow-lg group-hover:shadow-primary/10">
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-primary/70 via-sky-400/70 to-lime-400/70 opacity-0 transition group-hover:opacity-100" />
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <div className="text-sm text-muted-foreground">{label}</div>
+            <div className="mt-1 text-3xl font-semibold">{value}</div>
+            <div className="mt-2 inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[11px] font-semibold text-muted-foreground transition group-hover:bg-primary group-hover:text-primary-foreground">
+              클릭해서 목록 보기
+            </div>
+          </div>
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary transition group-hover:bg-primary group-hover:text-primary-foreground">
+            <Icon size={22} />
+          </div>
+        </div>
+        <div className="mt-3 text-xs text-muted-foreground">{items.length > 0 ? `관련 지표 ${items.length}개` : "해당 지표 없음"}</div>
+      </Card>
+    </button>
+  );
+}
+
+function SummaryListModal({
+  data,
+  onClose,
+  onSelect
+}: {
+  data: NonNullable<SummaryModalState>;
+  onClose: () => void;
+  onSelect: (event: IndicatorEvent) => void;
+}) {
+  const Icon = data.icon;
+  return (
+    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/45 px-4 py-8 backdrop-blur-sm" role="dialog" aria-modal="true">
+      <div className="w-full max-w-2xl overflow-hidden rounded-2xl border border-border bg-card text-card-foreground shadow-2xl">
+        <div className="border-b border-border bg-muted/35 px-5 py-4">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <span className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                <Icon size={21} />
+              </span>
+              <div>
+                <div className="text-sm font-semibold text-primary">{data.label}</div>
+                <h3 className="text-xl font-semibold">지표 목록 {data.value}개</h3>
+              </div>
+            </div>
+            <button type="button" onClick={onClose} className="rounded-full p-2 text-muted-foreground transition hover:bg-muted hover:text-foreground" aria-label="닫기">
+              <X size={18} />
+            </button>
+          </div>
+        </div>
+        <div className="max-h-[65vh] overflow-y-auto p-5">
+          {data.items.length > 0 ? (
+            <div className="grid gap-2">
+              {data.items.map((event) => (
+                <button
+                  key={eventKey(event)}
+                  type="button"
+                  onClick={() => onSelect(event)}
+                  className="group rounded-xl border border-border bg-background p-4 text-left transition hover:border-primary/60 hover:bg-primary/5 hover:shadow-md"
+                >
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="rounded-md bg-muted px-2 py-1 text-xs font-semibold text-muted-foreground">{event.country}</span>
+                        <span className="text-base font-semibold group-hover:text-primary">{event.nameKo}</span>
+                      </div>
+                      <div className="mt-1 text-sm text-muted-foreground">{event.category} · {event.periodLabel}</div>
+                    </div>
+                    <div className="text-right text-sm">
+                      <div className="font-semibold">{formatDateTime(event.eventDate, event.dateOnly)}</div>
+                      <div className="mt-1 text-xs text-muted-foreground">클릭하여 상세 보기</div>
+                    </div>
+                  </div>
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                    <ImportanceBadge importance={event.importance} />
+                    <StatusBadge status={event.status} />
+                    <DirectionBadge direction={directionOf(event)} />
+                  </div>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div className="rounded-xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">해당 조건의 지표가 없습니다.</div>
+          )}
+        </div>
+        <div className="flex justify-end border-t border-border bg-muted/25 px-5 py-4">
+          <button type="button" onClick={onClose} className="h-10 rounded-md border border-border bg-background px-4 text-sm font-semibold transition hover:bg-muted">
+            닫기
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function calendarMonthLabel(date: Date) {
+  return new Intl.DateTimeFormat("ko-KR", { year: "numeric", month: "long" }).format(date);
+}
+
+function sameDate(a: Date, b: Date) {
+  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+}
+
+function eventKey(event: IndicatorEvent) {
+  return `${event.code}-${event.eventDate.toISOString()}-${event.periodLabel}`;
+}
+
+function buildCalendarDays(month: Date) {
+  const firstDay = new Date(month.getFullYear(), month.getMonth(), 1);
+  const lastDay = new Date(month.getFullYear(), month.getMonth() + 1, 0);
+  const prefixBlanks = firstDay.getDay();
+  const monthDays = Array.from({ length: lastDay.getDate() }, (_, index) => new Date(month.getFullYear(), month.getMonth(), index + 1));
+  return [...Array.from({ length: prefixBlanks }, () => null), ...monthDays];
+}
+
+function CalendarScheduleModal({
+  events,
+  month,
+  onMonthChange,
+  onClose,
+  onSelect
+}: {
+  events: IndicatorEvent[];
+  month: Date;
+  onMonthChange: (month: Date) => void;
+  onClose: () => void;
+  onSelect: (event: IndicatorEvent) => void;
+}) {
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [pendingYear, setPendingYear] = useState(month.getFullYear());
+  const [pendingMonth, setPendingMonth] = useState(month.getMonth());
+  const pickerRef = useRef<HTMLDivElement | null>(null);
+  const days = buildCalendarDays(month);
+  const today = new Date();
+  const eventsByDay = useMemo(() => {
+    const map = new Map<string, IndicatorEvent[]>();
+    events.forEach((event) => {
+      const key = event.eventDate.toDateString();
+      map.set(key, [...(map.get(key) || []), event]);
+    });
+    return map;
+  }, [events]);
+  const moveMonth = (offset: number) => {
+    setPickerOpen(false);
+    onMonthChange(new Date(month.getFullYear(), month.getMonth() + offset, 1));
+  };
+  const years = Array.from({ length: 11 }, (_, index) => today.getFullYear() - 5 + index);
+  const months = Array.from({ length: 12 }, (_, index) => index);
+
+  useEffect(() => {
+    if (!pickerOpen) return;
+    const onPointerDown = (event: PointerEvent) => {
+      if (!pickerRef.current?.contains(event.target as Node)) {
+        setPickerOpen(false);
+      }
+    };
+    document.addEventListener("pointerdown", onPointerDown);
+    return () => document.removeEventListener("pointerdown", onPointerDown);
+  }, [pickerOpen]);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-3">
+      <Card className="max-h-[94vh] w-full max-w-6xl overflow-hidden shadow-2xl">
+        <div className="border-b border-border px-4 py-3">
+          <HeaderBlock
+            compact
+            title="경제 지표 발표 캘린더"
+            description="월별 발표 예정 지표와 발표 완료 지표를 일정표로 확인합니다."
+            actions={
+              <button className="rounded-full p-2 text-muted-foreground transition hover:bg-muted hover:text-foreground" onClick={onClose} aria-label="닫기">
+                <X size={18} />
+              </button>
+            }
+          />
+        </div>
+
+        <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-2">
+          <GhostButton className="h-8 px-2" onClick={() => moveMonth(-1)}>
+            <ChevronLeft size={16} /> 이전
+          </GhostButton>
+          <div className="relative" ref={pickerRef}>
+            <button
+              type="button"
+              onClick={() => {
+                if (!pickerOpen) {
+                  setPendingYear(month.getFullYear());
+                  setPendingMonth(month.getMonth());
+                }
+                setPickerOpen((value) => !value);
+              }}
+              className="inline-flex items-center gap-2 rounded-full border border-border bg-background px-4 py-2 text-base font-semibold shadow-sm transition hover:bg-muted"
+              aria-expanded={pickerOpen}
+            >
+              {calendarMonthLabel(month)}
+              <ChevronDown size={16} className={cn("transition", pickerOpen && "rotate-180")} />
+            </button>
+            {pickerOpen && (
+              <div className="absolute left-1/2 top-full z-[80] mt-2 grid w-80 -translate-x-1/2 grid-cols-2 gap-3 rounded-xl border border-border bg-card p-3 shadow-2xl">
+                <div>
+                  <div className="mb-2 text-xs font-semibold text-muted-foreground">연도</div>
+                  <div className="max-h-48 space-y-1 overflow-y-auto pr-1">
+                    {years.map((year) => (
+                      <button
+                        key={year}
+                        type="button"
+                        onClick={() => setPendingYear(year)}
+                        className={cn(
+                          "w-full rounded-md px-3 py-2 text-left text-sm font-semibold transition hover:bg-muted",
+                          year === pendingYear && "bg-primary text-primary-foreground hover:bg-primary"
+                        )}
+                      >
+                        {year}년
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <div className="mb-2 text-xs font-semibold text-muted-foreground">월</div>
+                  <div className="max-h-48 space-y-1 overflow-y-auto pr-1">
+                    {months.map((monthIndex) => (
+                      <button
+                        key={monthIndex}
+                        type="button"
+                        onClick={() => setPendingMonth(monthIndex)}
+                        className={cn(
+                          "w-full rounded-md px-3 py-2 text-left text-sm font-semibold transition hover:bg-muted",
+                          monthIndex === pendingMonth && "bg-primary text-primary-foreground hover:bg-primary"
+                        )}
+                      >
+                        {monthIndex + 1}월
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="col-span-2 flex items-center justify-between gap-2 border-t border-border pt-3">
+                  <div className="text-xs text-muted-foreground">
+                    선택: <span className="font-semibold text-foreground">{pendingYear}년 {pendingMonth + 1}월</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setPickerOpen(false)}
+                      className="h-8 rounded-md border border-border px-3 text-xs font-semibold transition hover:bg-muted"
+                    >
+                      취소
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onMonthChange(new Date(pendingYear, pendingMonth, 1));
+                        setPickerOpen(false);
+                      }}
+                      className="h-8 rounded-md bg-primary px-3 text-xs font-semibold text-primary-foreground transition hover:bg-primary/90"
+                    >
+                      확인
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+          <GhostButton className="h-8 px-2" onClick={() => moveMonth(1)}>
+            다음 <ChevronRight size={16} />
+          </GhostButton>
+        </div>
+
+        <div className="grid grid-cols-7 border-b border-border bg-muted/50 text-center text-xs font-medium text-muted-foreground">
+          {["일", "월", "화", "수", "목", "금", "토"].map((day, index) => (
+            <div
+              key={day}
+              className={cn(
+                "px-2 py-2",
+                index === 0 && "text-rose-500 dark:text-rose-300",
+                index === 6 && "text-sky-500 dark:text-sky-300"
+              )}
+            >
+              {day}
+            </div>
+          ))}
+        </div>
+        <div className="grid grid-cols-7">
+          {days.map((day, index) => {
+            if (!day) {
+              return <div key={`blank-${index}`} className="min-h-[92px] border-b border-r border-border bg-transparent p-1.5" aria-hidden />;
+            }
+            const dayEvents = eventsByDay.get(day.toDateString()) || [];
+            const isToday = sameDate(day, today);
+            const weekday = day.getDay();
+            return (
+              <div key={day.toISOString()} className="min-h-[92px] border-b border-r border-border p-1.5">
+                <div
+                  className={cn(
+                    "mb-1 inline-flex h-6 min-w-6 items-center justify-center rounded-full px-1.5 text-[11px] font-semibold",
+                    weekday === 0 && !isToday && "text-rose-500 dark:text-rose-300",
+                    weekday === 6 && !isToday && "text-sky-500 dark:text-sky-300",
+                    isToday && "bg-primary text-primary-foreground"
+                  )}
+                >
+                  {day.getDate()}
+                </div>
+                <div className="space-y-1">
+                  {dayEvents.map((event) => (
+                    <button
+                      key={eventKey(event)}
+                      className={cn(
+                        "block w-full rounded-md border px-1.5 py-1 text-left text-xs transition hover:border-primary hover:bg-primary/5",
+                        event.importance === "high" && "border-rose-200 bg-gradient-to-r from-orange-50 to-rose-50 text-rose-900 dark:border-rose-900 dark:from-orange-950 dark:to-rose-950 dark:text-rose-100",
+                        event.importance === "medium" && "border-amber-200 bg-gradient-to-r from-yellow-50 to-amber-50 text-amber-900 dark:border-amber-900 dark:from-yellow-950 dark:to-amber-950 dark:text-amber-100",
+                        event.importance === "low" && "border-emerald-200 bg-gradient-to-r from-emerald-50 to-lime-50 text-emerald-900 dark:border-emerald-900 dark:from-emerald-950 dark:to-lime-950 dark:text-emerald-100"
+                      )}
+                      onClick={() => onSelect(event)}
+                    >
+                      <div className="truncate text-[11px] font-semibold">{event.nameKo}</div>
+                      <div className="mt-0.5 flex items-center justify-between gap-2 text-[11px] opacity-80">
+                        <span>{event.dateOnly ? "종일" : new Intl.DateTimeFormat("ko-KR", { hour: "2-digit", minute: "2-digit" }).format(event.eventDate)}</span>
+                        <span>{event.status === "released" ? "발표완료" : "예정"}</span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </Card>
+    </div>
   );
 }
 
@@ -722,6 +1211,12 @@ function IndicatorDetailModal({ event, articles, apiStatuses, onClose }: { event
 
 export default function EconomicIndicatorsPage() {
   const [selected, setSelected] = useState<IndicatorEvent | null>(null);
+  const [summaryModal, setSummaryModal] = useState<SummaryModalState>(null);
+  const [calendarOpen, setCalendarOpen] = useState(false);
+  const [calendarMonth, setCalendarMonth] = useState(() => {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), 1);
+  });
   const today = useMemo(() => new Date(), []);
   const { data: articleData } = useQuery({ queryKey: ["indicator-related-articles"], queryFn: () => api.articles({ limit: 120 }) });
   const { data: apiStatuses = [], isLoading: apiStatusLoading, refetch: refetchApiStatus, isFetching: apiStatusFetching } = useQuery({
@@ -730,14 +1225,17 @@ export default function EconomicIndicatorsPage() {
     staleTime: 1000 * 60 * 5
   });
   const articles = articleData?.items || [];
+  const allBaseEvents = useMemo(() => {
+    return buildEvents(today).sort((a, b) => a.eventDate.getTime() - b.eventDate.getTime());
+  }, [today]);
   const baseEvents = useMemo(() => {
     const start = addDays(today, -7);
     const end = addDays(today, 7);
-    return buildEvents(today)
+    return allBaseEvents
       .filter((event) => event.eventDate >= start && event.eventDate <= end)
       .sort((a, b) => a.eventDate.getTime() - b.eventDate.getTime());
-  }, [today]);
-  const eventCodes = useMemo(() => baseEvents.map((event) => event.code), [baseEvents]);
+  }, [allBaseEvents, today]);
+  const eventCodes = useMemo(() => Array.from(new Set(allBaseEvents.map((event) => event.code))), [allBaseEvents]);
   const { data: observationRows = [], isLoading: observationsLoading, isFetching: observationsFetching } = useQuery({
     queryKey: ["economic-indicator-observations", eventCodes.join(",")],
     queryFn: () => api.economicIndicatorObservations(eventCodes),
@@ -749,9 +1247,13 @@ export default function EconomicIndicatorsPage() {
     return Object.fromEntries(observationRows.map((row) => [row.code, row] as const));
   }, [observationRows]);
   const events = useMemo(() => {
-    if (isInitialObservationLoading) return baseEvents;
-    return baseEvents.map((event) => applyObservation(event, observationMap[event.code]));
+    const rows = isInitialObservationLoading ? baseEvents : baseEvents.map((event) => applyObservation(event, observationMap[event.code]));
+    return [...rows].sort((a, b) => a.eventDate.getTime() - b.eventDate.getTime());
   }, [baseEvents, isInitialObservationLoading, observationMap]);
+  const calendarEvents = useMemo(() => {
+    const rows = isInitialObservationLoading ? allBaseEvents : allBaseEvents.map((event) => applyObservation(event, observationMap[event.code]));
+    return [...rows].sort((a, b) => a.eventDate.getTime() - b.eventDate.getTime());
+  }, [allBaseEvents, isInitialObservationLoading, observationMap]);
 
   const summary = {
     today: events.filter((event) => event.eventDate.toDateString() === today.toDateString()).length,
@@ -759,6 +1261,26 @@ export default function EconomicIndicatorsPage() {
     highImpact: events.filter((event) => event.importance === "high").length,
     manual: events.filter((event) => event.status === "manual_check_required").length
   };
+  const summaryItems = {
+    today: events.filter((event) => event.eventDate.toDateString() === today.toDateString()),
+    released: events.filter((event) => event.status === "released"),
+    highImpact: events.filter((event) => event.importance === "high"),
+    manual: events.filter((event) => event.status === "manual_check_required")
+  };
+  const tableRows = useMemo(() => {
+    const todayStart = new Date(today);
+    todayStart.setHours(0, 0, 0, 0);
+    const tomorrowStart = addDays(todayStart, 1);
+    const beforeToday = events.filter((event) => event.eventDate.getTime() < todayStart.getTime());
+    const todayEvents = events.filter((event) => event.eventDate.getTime() >= todayStart.getTime() && event.eventDate.getTime() < tomorrowStart.getTime());
+    const afterToday = events.filter((event) => event.eventDate.getTime() >= tomorrowStart.getTime());
+    return [
+      ...beforeToday,
+      { type: "today" as const },
+      ...todayEvents,
+      ...afterToday
+    ];
+  }, [events, today]);
   const connectedApiCount = apiStatuses.filter((source) => source.configured && source.status === "connected").length;
   const configuredApiCount = apiStatuses.filter((source) => source.configured).length;
   const errorApiCount = apiStatuses.filter((source) => source.configured && source.status === "error").length;
@@ -768,37 +1290,80 @@ export default function EconomicIndicatorsPage() {
     return a.label.localeCompare(b.label);
   });
 
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      if (selected) {
+        setSelected(null);
+        return;
+      }
+      if (summaryModal) {
+        setSummaryModal(null);
+        return;
+      }
+      if (calendarOpen) {
+        setCalendarOpen(false);
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [calendarOpen, selected, summaryModal]);
+
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold">주요 경제 지표</h1>
-          <p className="mt-1 text-sm text-muted-foreground">오늘 기준 D-7 ~ D+7 발표 일정과 실제치, 시장 영향 해석을 함께 봅니다.</p>
-        </div>
-        <GhostButton onClick={() => window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" })}>
-          <Info size={16} /> 데이터 소스 상태
-        </GhostButton>
-      </div>
+      <HeaderBlock
+        title="주요 경제 지표"
+        description="오늘 기준 D-7 ~ D+7 발표 일정과 실제치, 시장 영향 해석을 함께 봅니다."
+        actions={
+          <>
+            <GhostButton onClick={() => {
+              const now = new Date();
+              setCalendarMonth(new Date(now.getFullYear(), now.getMonth(), 1));
+              setCalendarOpen(true);
+            }}>
+              <CalendarDays size={16} /> 일정 달력
+            </GhostButton>
+            <GhostButton onClick={() => window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" })}>
+              <Info size={16} /> 데이터 소스 상태
+            </GhostButton>
+          </>
+        }
+      />
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <SummaryCard label="오늘 발표" value={summary.today} icon={CalendarClock} />
-        <SummaryCard label="발표 완료" value={summary.released} icon={CheckCircle2} />
-        <SummaryCard label="시장 영향 큰 지표" value={summary.highImpact} icon={ShieldAlert} />
-        <SummaryCard label="수동 확인 필요" value={summary.manual} icon={Search} />
+        <SummaryCard label="오늘 발표" value={summary.today} icon={CalendarClock} items={summaryItems.today} onOpen={() => setSummaryModal({ label: "오늘 발표", value: summary.today, icon: CalendarClock, items: summaryItems.today })} />
+        <SummaryCard label="발표 완료" value={summary.released} icon={CheckCircle2} items={summaryItems.released} onOpen={() => setSummaryModal({ label: "발표 완료", value: summary.released, icon: CheckCircle2, items: summaryItems.released })} />
+        <SummaryCard label="시장 영향 큰 지표" value={summary.highImpact} icon={ShieldAlert} items={summaryItems.highImpact} onOpen={() => setSummaryModal({ label: "시장 영향 큰 지표", value: summary.highImpact, icon: ShieldAlert, items: summaryItems.highImpact })} />
+        <SummaryCard label="수동 확인 필요" value={summary.manual} icon={Search} items={summaryItems.manual} onOpen={() => setSummaryModal({ label: "수동 확인 필요", value: summary.manual, icon: Search, items: summaryItems.manual })} />
       </div>
 
-      <Card className="overflow-hidden">
+      <Card>
         <div className="border-b border-border p-4">
-          <h2 className="text-lg font-semibold">이번 주 주요 지표</h2>
-          <p className="mt-1 text-sm text-muted-foreground">일정은 config 보완과 공식 API 연동을 분리해서 관리하며, 실제 연결 상태는 하단에서 확인합니다.</p>
+          <HeaderBlock
+            compact
+            title="이번 주 주요 지표"
+            description="일정은 config 보완과 공식 API 연동을 분리해서 관리하며, 실제 연결 상태는 하단에서 확인합니다."
+          />
           {isInitialObservationLoading ? (
             <div className="mt-3 rounded-md border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-800 dark:border-sky-900 dark:bg-sky-950 dark:text-sky-200">
               공식 API에서 지표 정보를 가져오는 중입니다. 불러오기가 끝난 뒤 실데이터가 없거나 미설정인 지표만 샘플 데이터로 표시합니다.
             </div>
           ) : null}
         </div>
-        <div className="overflow-x-auto">
-          <table className="min-w-[1240px] w-full text-left text-sm">
+        <div className="overflow-visible">
+          <table className="w-full table-fixed text-left text-sm">
+            <colgroup>
+              <col className="w-[15%]" />
+              <col className="w-[6%]" />
+              <col className="w-[20%]" />
+              <col className="w-[9%]" />
+              <col className="w-[10%]" />
+              <col className="w-[9%]" />
+              <col className="w-[9%]" />
+              <col className="w-[9%]" />
+              <col className="w-[7%]" />
+              <col className="w-[6%]" />
+            </colgroup>
             <thead className="bg-muted/60 text-xs text-muted-foreground">
               <tr>
                 <th className="whitespace-nowrap px-4 py-3">일시</th>
@@ -809,17 +1374,49 @@ export default function EconomicIndicatorsPage() {
                 <th className="whitespace-nowrap px-4 py-3">실제치</th>
                 <th className="whitespace-nowrap px-4 py-3">이전치</th>
                 <th className="whitespace-nowrap px-4 py-3">방향</th>
-                <th className="whitespace-nowrap px-4 py-3">관련 시장</th>
                 <th className="whitespace-nowrap px-4 py-3">연결 뉴스</th>
                 <th className="whitespace-nowrap px-4 py-3">상세</th>
               </tr>
             </thead>
             <tbody>
-              {events.map((event) => {
+              {tableRows.map((row, index) => {
+                if ("type" in row) {
+                  return (
+                    <tr key="today-marker" className="border-t border-sky-200 bg-sky-50/80 dark:border-sky-900 dark:bg-sky-950/50">
+                      <td colSpan={10} className="px-4 py-3">
+                        <div className="flex flex-wrap items-center gap-3 text-sm">
+                          <span className="rounded-full bg-sky-600 px-3 py-1 text-xs font-bold text-white shadow-sm">Today</span>
+                          <span className="font-semibold text-sky-950 dark:text-sky-100">
+                            {new Intl.DateTimeFormat("ko-KR", { year: "numeric", month: "long", day: "numeric", weekday: "long" }).format(today)}
+                          </span>
+                          <span className="ml-auto grid grid-cols-2 overflow-hidden rounded-full border border-sky-200 bg-white text-xs font-bold shadow-sm dark:border-sky-800 dark:bg-sky-950">
+                            <span className="inline-flex items-center justify-center gap-1 bg-emerald-100 px-3 py-1 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200">
+                              <ArrowUp size={13} /> 발표 완료 구간
+                            </span>
+                            <span className="inline-flex items-center justify-center gap-1 bg-sky-100 px-3 py-1 text-sky-800 dark:bg-sky-900 dark:text-sky-100">
+                              발표 예정 구간 <ArrowDown size={13} />
+                            </span>
+                          </span>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                }
+                const event = row;
                 const related = getRelatedArticles(event, articles);
                 const direction = directionOf(event);
+                const isTodayEvent = sameDate(event.eventDate, today);
+                const previousRow = tableRows[index - 1];
+                const followsTodayMarker = Boolean(previousRow && "type" in previousRow);
                 return (
-                  <tr key={event.code} className="border-t border-border align-top hover:bg-muted/30">
+                  <tr
+                    key={`${eventKey(event)}-${index}`}
+                    className={cn(
+                      "border-t border-border align-top hover:bg-muted/30",
+                      isTodayEvent && "border-sky-200 bg-sky-50/80 hover:bg-sky-100/70 dark:border-sky-900 dark:bg-sky-950/45 dark:hover:bg-sky-950/70",
+                      followsTodayMarker && "border-t-0"
+                    )}
+                  >
                     <td className="whitespace-nowrap px-4 py-3">{formatDateTime(event.eventDate, event.dateOnly)}</td>
                     <td className="px-4 py-3"><Badge>{event.country}</Badge></td>
                     <td className="px-4 py-3">
@@ -828,16 +1425,10 @@ export default function EconomicIndicatorsPage() {
                     </td>
                     <td className="px-4 py-3"><ImportanceBadge importance={event.importance} /></td>
                     <td className="px-4 py-3"><StatusBadge status={event.status} /></td>
-                    <td className="px-4 py-3 font-medium">{isInitialObservationLoading ? <LoadingValue /> : formatActualValue(event)}</td>
+                    <td className="px-4 py-3"><ActualValueCell event={event} loading={isInitialObservationLoading} /></td>
                     <td className="px-4 py-3 text-muted-foreground">{isInitialObservationLoading ? <LoadingValue /> : formatValue(event.previousValue, event.unit)}</td>
                     <td className="px-4 py-3">
                       {isInitialObservationLoading ? <Badge className="bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-200">확인 중</Badge> : <DirectionBadge direction={direction} />}
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex max-w-56 flex-wrap gap-1">
-                        {event.relatedMarkets.slice(0, 3).map((market) => <Badge key={market}>{market}</Badge>)}
-                        {event.relatedMarkets.length > 3 ? <Badge>+{event.relatedMarkets.length - 3}</Badge> : null}
-                      </div>
                     </td>
                     <td className="whitespace-nowrap px-4 py-3">{related.length}건</td>
                     <td className="px-4 py-3">
@@ -856,7 +1447,7 @@ export default function EconomicIndicatorsPage() {
           const direction = directionOf(event);
           const interpretation = direction === "none" ? "발표 전 구간입니다. 예정 시각 이후 실제치와 이전치를 비교해 시장 영향을 확인해야 합니다." : event.interpretation[direction];
           return (
-            <Card key={event.code} className="p-4">
+            <Card key={eventKey(event)} className="p-4">
               <div className="mb-3 flex items-center justify-between gap-2">
                 <Badge>{event.country}</Badge>
                 {isInitialObservationLoading ? <Badge className="bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-200">확인 중</Badge> : <DirectionBadge direction={direction} />}
@@ -872,20 +1463,23 @@ export default function EconomicIndicatorsPage() {
       </section>
 
       <Card className="p-4">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <h2 className="text-lg font-semibold">데이터 소스 상태</h2>
-            <p className="mt-1 text-sm text-muted-foreground">.env에 입력한 API 키 기준으로 실제 테스트 요청을 보내 연결 가능 여부를 확인합니다.</p>
-            <div className="mt-2 flex flex-wrap gap-2">
-              <Badge className="bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200">연결 {connectedApiCount}/{configuredApiCount || apiStatuses.length}</Badge>
-              {errorApiCount > 0 ? <Badge className="bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-200">오류 {errorApiCount}</Badge> : null}
-            </div>
-          </div>
-          <GhostButton onClick={() => refetchApiStatus()} disabled={apiStatusFetching}>
-            <RefreshCw size={15} className={cn(apiStatusFetching && "animate-spin")} />
-            상태 새로고침
-          </GhostButton>
-        </div>
+        <HeaderBlock
+          compact
+          title="데이터 소스 상태"
+          description=".env에 입력한 API 키 기준으로 실제 테스트 요청을 보내 연결 가능 여부를 확인합니다."
+          actions={
+            <>
+              <div className="flex flex-wrap gap-2">
+                <Badge className="bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200">연결 {connectedApiCount}/{configuredApiCount || apiStatuses.length}</Badge>
+                {errorApiCount > 0 ? <Badge className="bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-200">오류 {errorApiCount}</Badge> : null}
+              </div>
+              <GhostButton onClick={() => refetchApiStatus()} disabled={apiStatusFetching}>
+                <RefreshCw size={15} className={cn(apiStatusFetching && "animate-spin")} />
+                상태 새로고침
+              </GhostButton>
+            </>
+          }
+        />
         <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
           {apiStatusLoading && apiStatuses.length === 0 ? (
             <div className="text-sm text-muted-foreground">경제 데이터 API 연결 상태를 확인하는 중입니다.</div>
@@ -904,6 +1498,27 @@ export default function EconomicIndicatorsPage() {
         </div>
       </Card>
 
+      {calendarOpen ? (
+        <CalendarScheduleModal
+          events={calendarEvents}
+          month={calendarMonth}
+          onMonthChange={setCalendarMonth}
+          onClose={() => setCalendarOpen(false)}
+          onSelect={(event) => {
+            setSelected(event);
+          }}
+        />
+      ) : null}
+      {summaryModal ? (
+        <SummaryListModal
+          data={summaryModal}
+          onClose={() => setSummaryModal(null)}
+          onSelect={(event) => {
+            setSummaryModal(null);
+            setSelected(event);
+          }}
+        />
+      ) : null}
       {selected ? <IndicatorDetailModal event={selected} articles={articles} apiStatuses={apiStatuses} onClose={() => setSelected(null)} /> : null}
     </div>
   );

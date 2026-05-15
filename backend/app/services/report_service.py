@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections import Counter
 from datetime import date, datetime, time, timedelta
+import asyncio
 import json
 import re
 
@@ -11,6 +12,7 @@ from sqlalchemy.orm import Session
 from app.core.config import get_settings
 from app.core.time import kst_now
 from app.models.entities import AppSetting, Article, Report
+from app.services.ai_providers import get_ai_provider
 
 
 DEFAULT_REPORT_FINAL_TIME = time(18, 0)
@@ -161,6 +163,9 @@ def build_report(db: Session, target_date: date | None = None, final: bool = Fal
     target = target_date or kst_now().date()
     articles = articles_for_report(db, target, final)
     summary = summarize_articles(articles)
+    ai_mode = report_ai_mode(db, final)
+    if ai_mode["enabled"]:
+        summary = apply_report_ai_insights(summary, articles, target, final, ai_mode)
     content = render_markdown(target, final, summary, report_final_time_text(db))
     now = kst_now()
     return {
@@ -178,8 +183,8 @@ def build_report(db: Session, target_date: date | None = None, final: bool = Fal
         "important_count": summary["counts"]["important"],
         "generated_at": now,
         "finalized_at": now if final else None,
-        "model_provider": "rule_based",
-        "model_name": "",
+        "model_provider": ai_mode["model_provider"],
+        "model_name": ai_mode["model_name"],
     }
 
 
@@ -239,6 +244,110 @@ def report_to_dict(report: Report) -> dict:
         "model_provider": report.model_provider,
         "model_name": report.model_name,
     }
+
+
+def setting_bool(db: Session, key: str, default: bool) -> bool:
+    row = db.get(AppSetting, key)
+    if row is None:
+        return default
+    return row.value.lower() == "true"
+
+
+def setting_value(db: Session, key: str, default: str) -> str:
+    row = db.get(AppSetting, key)
+    if row is None:
+        return default
+    return row.value
+
+
+def report_ai_mode(db: Session, final: bool) -> dict:
+    settings = get_settings()
+    provider_name = setting_value(db, "ai_provider", settings.ai_provider)
+    model_name = setting_value(db, "ai_model", settings.ai_model)
+    if not model_name:
+        provider_lower = provider_name.lower()
+        if provider_lower == "gemini":
+            model_name = settings.gemini_model
+        elif provider_lower == "openai":
+            model_name = settings.openai_model
+        elif provider_lower == "ollama":
+            model_name = settings.ollama_model
+    boost_enabled = setting_bool(db, "enable_ai_boost", settings.enable_ai_boost)
+    if provider_name.lower() == "gemini":
+        boost_enabled = False
+    if provider_name == "disabled":
+        return {
+            "enabled": False,
+            "model_provider": "rule_based",
+            "model_name": "",
+            "reason": "AI provider disabled",
+        }
+    if not boost_enabled and not final:
+        return {
+            "enabled": False,
+            "model_provider": "rule_based",
+            "model_name": "realtime_boost_off",
+            "reason": "AI Boost off: realtime report uses rule based mode",
+        }
+    return {
+        "enabled": True,
+        "model_provider": provider_name,
+        "model_name": model_name,
+        "reason": "AI Boost on" if boost_enabled else "final report only",
+    }
+
+
+def apply_report_ai_insights(summary: dict, articles: list[Article], target: date, final: bool, ai_mode: dict) -> dict:
+    if not articles:
+        return summary
+    prompt_article = report_prompt_article(summary, articles, target, final)
+    try:
+        provider = get_ai_provider(overrides={"ai_provider": ai_mode["model_provider"], "ai_model": ai_mode["model_name"]})
+        result = asyncio.run(provider.analyze(prompt_article))
+    except Exception:
+        summary["report_ai_notice"] = "AI 보고서 인사이트 생성에 실패하여 규칙 기반 보고서를 표시합니다."
+        return summary
+    if result.summary:
+        summary["overview"] = result.summary
+    if result.bullet_points:
+        summary["report_ai_bullets"] = result.bullet_points[:6]
+    summary["report_ai_notice"] = "최종 보고서 인사이트에 AI 요약을 1회 반영했습니다." if final else "AI Boost 활성화 상태의 실시간 보고서 인사이트입니다."
+    return summary
+
+
+def report_prompt_article(summary: dict, articles: list[Article], target: date, final: bool) -> Article:
+    top_articles = sorted(articles, key=economic_impact_score, reverse=True)[:14]
+    article_lines_text = "\n".join(
+        f"- {article.translated_title or article.title} | source={article.source_name} | region={article.region} | "
+        f"importance={normalize_score(article.importance_score):.2f} | bok={normalize_score(article.bok_relevance_score):.2f} | "
+        f"summary={clean(article.summary or article.content or article.title, 180)}"
+        for article in top_articles
+    )
+    keywords = ", ".join(item["name"] for item in summary.get("keywords", [])[:10])
+    content = (
+        "다음 자료는 개인 경제 뉴스 대시보드의 일일 보고서 원천 데이터입니다. "
+        "임원/실무 보고용으로 한국어 3~5문장 종합 의견과 핵심 bullet을 작성하세요. "
+        "투자 권유처럼 단정하지 말고 시장 영향과 확인 필요 포인트 중심으로 쓰세요.\n\n"
+        f"보고일: {target.isoformat()}\n"
+        f"보고 유형: {'확정 저장본' if final else '실시간 초안'}\n"
+        f"기사 수: total={summary['counts']['total']}, domestic={summary['counts']['domestic']}, "
+        f"global={summary['counts']['global']}, bok={summary['counts']['bok']}, important={summary['counts']['important']}\n"
+        f"주요 키워드: {keywords}\n\n"
+        f"주요 기사:\n{article_lines_text}"
+    )
+    return Article(
+        title=f"{target.isoformat()} 일일 경제 뉴스 보고서 인사이트",
+        translated_title="",
+        url="local://report",
+        canonical_url=f"local://report/{target.isoformat()}",
+        title_hash=f"report-{target.isoformat()}",
+        source_name="Local report generator",
+        region="domestic",
+        category="domestic_economy",
+        summary=summary.get("overview", ""),
+        content=content[:9000],
+        tags_text=keywords,
+    )
 
 
 def summarize_articles(articles: list[Article]) -> dict:
@@ -625,6 +734,7 @@ def render_markdown(target: date, final: bool, summary: dict, final_time_text: s
         "",
         "## 한눈에 보기",
         summary.get("overview") or overview_sentence(summary),
+        *[f"- {item}" for item in summary.get("report_ai_bullets", [])],
         "",
         "## 국내 경제",
         summary["domestic"]["overview"],

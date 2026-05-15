@@ -68,6 +68,24 @@ TITLE_TRANSLATION_SCHEMA: dict[str, Any] = {
     "required": ["translations"],
 }
 
+BATCH_ANALYSIS_SCHEMA: dict[str, Any] = {
+    "type": "object",
+    "properties": {
+        "articles": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "id": {"type": "integer"},
+                    **AI_JSON_SCHEMA["properties"],
+                },
+                "required": ["id", *AI_JSON_SCHEMA["required"]],
+            },
+        }
+    },
+    "required": ["articles"],
+}
+
 
 def title_translation_prompt(items: list[tuple[int, str]]) -> str:
     titles = "\n".join(f"- id={article_id}: {title}" for article_id, title in items)
@@ -81,14 +99,103 @@ def title_translation_prompt(items: list[tuple[int, str]]) -> str:
     )
 
 
+ECONOMIC_CONTEXT_KEYWORDS = [
+    "한국은행",
+    "한은",
+    "금통위",
+    "기준금리",
+    "금리",
+    "물가",
+    "인플레이션",
+    "환율",
+    "원/달러",
+    "채권",
+    "국채",
+    "증시",
+    "코스피",
+    "코스닥",
+    "부동산",
+    "가계부채",
+    "대출",
+    "은행",
+    "금융",
+    "수출",
+    "수입",
+    "무역수지",
+    "반도체",
+    "Fed",
+    "FOMC",
+    "CPI",
+    "PCE",
+    "tariff",
+    "inflation",
+    "rate",
+    "bond",
+    "dollar",
+    "export",
+]
+
+
+def batch_article_context(article: Article, max_chars: int = 1200) -> str:
+    text = clean_text(article.content or article.summary or "")
+    lead = text[:700]
+    keyword_sentences = select_keyword_sentences(text[700:], max_sentences=5)
+    combined_parts = [lead, *keyword_sentences]
+    combined = clean_text(" ".join(part for part in combined_parts if part))
+    return combined[:max_chars]
+
+
+def select_keyword_sentences(text: str, max_sentences: int = 5) -> list[str]:
+    sentences = [sentence.strip() for sentence in re.split(r"(?<=[.!?。！？]|[다요음임함됨됨다])\s+", text) if sentence.strip()]
+    scored: list[tuple[int, int, str]] = []
+    for index, sentence in enumerate(sentences[:80]):
+        lowered = sentence.lower()
+        score = sum(1 for keyword in ECONOMIC_CONTEXT_KEYWORDS if keyword.lower() in lowered)
+        if score:
+            scored.append((score, -index, sentence))
+    selected = sorted(scored, reverse=True)[:max_sentences]
+    return [sentence for _, _, sentence in sorted(selected, key=lambda item: -item[1])]
+
+
+def batch_article_prompt(articles: list[Article]) -> str:
+    rows = []
+    for article in articles:
+        excerpt = batch_article_context(article)
+        rows.append(
+            {
+                "id": article.id,
+                "title": article.title,
+                "translated_title": article.translated_title,
+                "source": article.source_name,
+                "region": article.region,
+                "published_at": article.published_at.isoformat() if article.published_at else "",
+                "rss_summary": clean_text(article.summary)[:350],
+                "content_excerpt": excerpt,
+                "tags": article.tags_text,
+            }
+        )
+    return (
+        "아래는 한국은행 관련 가능성이 높은 경제 뉴스입니다. "
+        "모든 자연어 결과는 반드시 한국어로 작성하세요. 영어 제목, 영어 요약, 영어 본문이 들어와도 한국어로 번역해 작성해야 합니다. "
+        "translated_title에는 원문 제목이 한국어면 자연스럽게 정리한 한국어 제목을, 영어면 의미가 보존된 자연스러운 한국어 번역 제목을 넣으세요. "
+        "summary, bullet_points, tags, bok_reason은 영어 단어나 문장만 그대로 두지 말고 한국어 표현을 우선 사용하세요. "
+        "각 기사별로 한국어 요약 2문장, 핵심 bullet 2개, 한국어 태그 3~5개, 중요도, 한국은행 관련도와 사유를 작성하세요. "
+        "시장 영향은 rate, fx, bond, banking, real_estate 각각 positive/negative/neutral/unknown 중 하나로 판단하세요. "
+        "반드시 입력 id를 유지하고, JSON 객체만 반환하세요.\n\n"
+        f"{json.dumps({'articles': rows}, ensure_ascii=False)}"
+    )
+
+
 def article_prompt(article: Article) -> str:
     content = (article.content or article.summary or "")[:6000]
     translated_title = f"Translated Korean Title: {article.translated_title}\n" if article.translated_title else ""
     return (
         "Analyze this economic news article for a Korean personal dashboard. "
         "Return only JSON matching the schema. "
-        "translated_title must be a concise natural Korean translation of the title. "
-        "The summary, bullet_points, tags, and bok_reason must be written in Korean, even when the source article is in English.\n\n"
+        "All natural-language values must be written in Korean. "
+        "If the title, summary, or content is English, translate the meaning into natural Korean instead of copying English sentences. "
+        "translated_title must always be a concise natural Korean title. "
+        "summary, bullet_points, tags, and bok_reason must be Korean-first; keep only unavoidable proper nouns, tickers, and policy names in English.\n\n"
         f"Title: {article.title}\n"
         f"{translated_title}"
         f"Source: {article.source_name}\n"
@@ -119,6 +226,9 @@ class AIProvider(ABC):
         return result.bok_relevance_score, result.bok_reason
 
     async def translate_titles(self, items: list[tuple[int, str]]) -> dict[int, str]:
+        return {}
+
+    async def analyze_batch(self, articles: list[Article]) -> dict[int, AIResult]:
         return {}
 
 
@@ -317,6 +427,37 @@ class OpenAIProvider(AIProvider):
                         text += content.get("text", "")
         return parse_title_translations(text)
 
+    async def analyze_batch(self, articles: list[Article]) -> dict[int, AIResult]:
+        if not self.api_key or not articles:
+            return {}
+        payload = {
+            "model": self.model_name,
+            "input": batch_article_prompt(articles),
+            "text": {
+                "format": {
+                    "type": "json_schema",
+                    "name": "article_batch_analysis",
+                    "schema": BATCH_ANALYSIS_SCHEMA,
+                    "strict": True,
+                }
+            },
+        }
+        async with httpx.AsyncClient(timeout=90) as client:
+            response = await client.post(
+                "https://api.openai.com/v1/responses",
+                headers={"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"},
+                json=payload,
+            )
+            response.raise_for_status()
+        data = response.json()
+        text = data.get("output_text") or ""
+        if not text:
+            for item in data.get("output", []):
+                for content in item.get("content", []):
+                    if content.get("type") in {"output_text", "text"}:
+                        text += content.get("text", "")
+        return parse_batch_analysis(text)
+
 
 class OllamaProvider(AIProvider):
     provider_name = "ollama"
@@ -399,6 +540,26 @@ class OllamaProvider(AIProvider):
         content = message.get("content") or message.get("reasoning") or ""
         return parse_title_translations(content)
 
+    async def analyze_batch(self, articles: list[Article]) -> dict[int, AIResult]:
+        if not articles:
+            return {}
+        payload = {
+            "model": self.model_name,
+            "messages": [
+                {"role": "system", "content": "Return valid JSON only. Do not include reasoning."},
+                {"role": "user", "content": batch_article_prompt(articles)},
+            ],
+            "response_format": {"type": "json_object"},
+            "temperature": 0,
+            "max_tokens": 7000,
+        }
+        async with httpx.AsyncClient(timeout=180) as client:
+            response = await client.post(f"{self.base_url}/chat/completions", json=payload)
+            response.raise_for_status()
+        message = response.json()["choices"][0]["message"]
+        content = message.get("content") or message.get("reasoning") or ""
+        return parse_batch_analysis(content)
+
 
 class GeminiProvider(AIProvider):
     provider_name = "gemini"
@@ -441,6 +602,23 @@ class GeminiProvider(AIProvider):
         parts = response.json()["candidates"][0]["content"]["parts"]
         return parse_title_translations("".join(part.get("text", "") for part in parts))
 
+    async def analyze_batch(self, articles: list[Article]) -> dict[int, AIResult]:
+        if not self.api_key or not articles:
+            return {}
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{self.model_name}:generateContent"
+        payload = {
+            "contents": [{"parts": [{"text": batch_article_prompt(articles)}]}],
+            "generationConfig": {
+                "responseMimeType": "application/json",
+                "responseSchema": BATCH_ANALYSIS_SCHEMA,
+            },
+        }
+        async with httpx.AsyncClient(timeout=90) as client:
+            response = await client.post(url, params={"key": self.api_key}, json=payload)
+            response.raise_for_status()
+        parts = response.json()["candidates"][0]["content"]["parts"]
+        return parse_batch_analysis("".join(part.get("text", "") for part in parts))
+
 
 def parse_ai_json(value: str | dict[str, Any]) -> AIResult:
     try:
@@ -481,6 +659,33 @@ def parse_title_translations(value: str | dict[str, Any]) -> dict[int, str]:
         if title:
             result[article_id] = title
     return result
+
+
+def parse_batch_analysis(value: str | dict[str, Any]) -> dict[int, AIResult]:
+    try:
+        data = value if isinstance(value, dict) else json.loads(value)
+    except json.JSONDecodeError:
+        match = re.search(r"\{.*\}", value, flags=re.DOTALL) if isinstance(value, str) else None
+        if not match:
+            return {}
+        try:
+            data = json.loads(match.group(0))
+        except json.JSONDecodeError:
+            return {}
+    rows = data.get("articles", []) if isinstance(data, dict) else data
+    if not isinstance(rows, list):
+        return {}
+    results: dict[int, AIResult] = {}
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        try:
+            article_id = int(row.get("id"))
+            payload = {key: value for key, value in row.items() if key != "id"}
+            results[article_id] = AIResult.model_validate(payload)
+        except (TypeError, ValueError, ValidationError):
+            continue
+    return results
 
 
 def get_ai_provider(settings: Settings | None = None, overrides: dict[str, str] | None = None) -> AIProvider:

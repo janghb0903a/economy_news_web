@@ -35,10 +35,290 @@ body {
   min-width: 320px;
   background: hsl(var(--background));
   color: hsl(var(--foreground));
+  font-family:
+    Inter,
+    "Pretendard",
+    "Noto Sans KR",
+    "Apple SD Gothic Neo",
+    "Malgun Gothic",
+    system-ui,
+    sans-serif;
+  font-feature-settings: "kern";
+  text-rendering: geometricPrecision;
 }
 
 * {
   box-sizing: border-box;
+}
+
+main h1[class],
+main h2[class],
+main h3[class] {
+  letter-spacing: 0;
+  text-wrap: balance;
+}
+
+main h1[class] {
+  line-height: 1.22;
+  font-weight: 720;
+}
+
+main h2[class] {
+  line-height: 1.32;
+  font-weight: 690;
+}
+
+main h3[class] {
+  line-height: 1.36;
+  font-weight: 680;
+}
+
+main h1[class] + p[class],
+main h2[class] + p[class],
+.heading-description {
+  line-height: 1.65;
+  color: hsl(var(--muted-foreground));
+}
+
+.heading-title {
+  letter-spacing: 0;
+  text-wrap: balance;
+}
+
+.heading-title-page {
+  font-size: 1.5rem;
+  line-height: 1.22;
+  font-weight: 720;
+}
+
+.heading-title-section {
+  font-size: 1.125rem;
+  line-height: 1.32;
+  font-weight: 690;
+}
+
+.heading-description {
+  margin-top: 0.25rem;
+  max-width: 56rem;
+  font-size: 0.875rem;
+}
+
+.heading-description-section {
+  max-width: 48rem;
+}
+
+@keyframes duplicate-left {
+  0%,
+  22% {
+    transform: translateX(0) scale(1);
+    opacity: 1;
+  }
+  58%,
+  76% {
+    transform: translateX(160px) scale(0.96);
+    opacity: 0.98;
+  }
+  84% {
+    transform: translateX(160px) scale(0.96);
+    opacity: 0;
+  }
+  99% {
+    transform: translateX(160px) scale(0.96);
+    opacity: 0;
+  }
+  100% {
+    transform: translateX(0) scale(1);
+    opacity: 0;
+  }
+}
+
+@keyframes duplicate-pulse {
+  0%,
+  60% {
+    transform: scale(0.7);
+    opacity: 0;
+  }
+  66%,
+  76% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  82%,
+  100% {
+    transform: scale(0.7);
+    opacity: 0;
+  }
+}
+
+@keyframes duplicate-cursor {
+  0%,
+  18% {
+    transform: translate(0, 0);
+    opacity: 1;
+  }
+  58% {
+    transform: translate(150px, -4px);
+    opacity: 1;
+  }
+  72% {
+    transform: translate(150px, -4px);
+    opacity: 0;
+  }
+  99% {
+    transform: translate(150px, -4px);
+    opacity: 0;
+  }
+  100% {
+    transform: translate(0, 0);
+    opacity: 0;
+  }
+}
+
+@keyframes representative-candidate {
+  0%,
+  42% {
+    border-color: #f59e0b;
+    background: hsl(var(--card));
+    box-shadow: 0 1px 2px rgb(15 23 42 / 0.08);
+  }
+  55%,
+  82% {
+    border-color: #84cc16;
+    background: rgb(236 252 203 / 0.75);
+    box-shadow: 0 0 0 3px rgb(132 204 22 / 0.2);
+  }
+  100% {
+    border-color: #f59e0b;
+    background: hsl(var(--card));
+    box-shadow: 0 1px 2px rgb(15 23 42 / 0.08);
+  }
+}
+
+@keyframes representative-current {
+  0%,
+  42% {
+    border-color: #84cc16;
+    background: hsl(var(--card));
+    box-shadow: 0 0 0 3px rgb(132 204 22 / 0.2);
+  }
+  55%,
+  82% {
+    border-color: #f59e0b;
+    background: hsl(var(--card));
+    box-shadow: 0 1px 2px rgb(15 23 42 / 0.08);
+  }
+  100% {
+    border-color: #84cc16;
+    background: hsl(var(--card));
+    box-shadow: 0 0 0 3px rgb(132 204 22 / 0.2);
+  }
+}
+
+@keyframes representative-cursor {
+  0%,
+  24% {
+    transform: translate(0, 0) scale(1);
+    opacity: 1;
+  }
+  38% {
+    transform: translate(6px, -5px) scale(0.92);
+    opacity: 1;
+  }
+  52%,
+  82% {
+    transform: translate(6px, -5px) scale(1);
+    opacity: 0;
+  }
+  100% {
+    transform: translate(0, 0) scale(1);
+    opacity: 0;
+  }
+}
+
+@keyframes representative-check {
+  0%,
+  44% {
+    transform: scale(0.7);
+    opacity: 0;
+  }
+  56%,
+  78% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  86%,
+  100% {
+    transform: scale(0.7);
+    opacity: 0;
+  }
+}
+
+@keyframes trash-card {
+  0%,
+  20% {
+    transform: translate(0, 0) scale(1);
+    opacity: 1;
+  }
+  60%,
+  76% {
+    transform: translate(165px, 10px) scale(0.9);
+    opacity: 0.95;
+  }
+  86%,
+  100% {
+    transform: translate(165px, 10px) scale(0.75);
+    opacity: 0;
+  }
+}
+
+@keyframes trash-cursor {
+  0%,
+  18% {
+    transform: translate(0, 0);
+    opacity: 1;
+  }
+  58% {
+    transform: translate(150px, 8px);
+    opacity: 1;
+  }
+  78%,
+  100% {
+    transform: translate(150px, 8px);
+    opacity: 0;
+  }
+}
+
+@keyframes trash-bin {
+  0%,
+  52% {
+    transform: scale(1);
+    box-shadow: none;
+  }
+  62%,
+  78% {
+    transform: scale(1.12);
+    box-shadow: 0 0 0 6px rgb(244 63 94 / 0.16);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: none;
+  }
+}
+
+@keyframes toast-fade {
+  0% {
+    transform: translateY(-4px);
+    opacity: 0;
+  }
+  16%,
+  72% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-4px);
+    opacity: 0;
+  }
 }
 
 .pdf-capture-mode .no-print {

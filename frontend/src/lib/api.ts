@@ -1,4 +1,4 @@
-import type { ArticleDetail, ArticleListResponse, CompanyAnalysis, CompanyAnalysisJob, DashboardSummary, EconomicApiStatus, EconomicIndicatorObservation, FetchLog, IngestSchedule, PostprocessStatus, Report, ReportListItem, Settings, Source } from "./types";
+import type { Article, ArticleDetail, ArticleListResponse, CompanyAnalysis, CompanyAnalysisJob, DashboardSummary, EconomicApiStatus, EconomicIndicatorObservation, FetchLogPage, IngestSchedule, PostprocessStatus, Report, ReportListItem, Settings, Source } from "./types";
 
 const API_BASE = "";
 
@@ -36,16 +36,26 @@ export const api = {
   dashboard: () => request<DashboardSummary>("/api/dashboard/summary"),
   articles: (params?: ArticleParams) => request<ArticleListResponse>(`/api/articles${toQuery(params)}`),
   article: (id: string | number) => request<ArticleDetail>(`/api/articles/${id}`),
-  markRead: (id: string | number) => request<{ ok: boolean }>(`/api/articles/${id}/read`, { method: "POST" }),
+  markRead: (id: string | number) => request<{ ok: boolean; is_read: boolean }>(`/api/articles/${id}/read`, { method: "POST" }),
   save: (id: string | number) => request<{ ok: boolean; is_saved: boolean }>(`/api/articles/${id}/save`, { method: "POST" }),
   addTag: (id: string | number, tag: string) => request(`/api/articles/${id}/tags`, { method: "POST", body: JSON.stringify({ tag }) }),
   deleteTag: (id: string | number, tag: string) => request(`/api/articles/${id}/tags/${encodeURIComponent(tag)}`, { method: "DELETE" }),
+  mergeDuplicateGroup: (id: string | number, targetArticleId: string | number) =>
+    request<Article>(`/api/articles/${id}/duplicate-group`, { method: "POST", body: JSON.stringify({ target_article_id: targetArticleId }) }),
+  setDuplicateRepresentative: (id: string | number) => request<Article>(`/api/articles/${id}/duplicate-representative`, { method: "POST" }),
+  removeDuplicateGroup: (id: string | number) =>
+    request<{ ok: boolean; removed_article_id: number; remaining_group_size: number; remaining_article_ids: number[]; representative_id: number | null; can_undo: boolean }>(
+      `/api/articles/${id}/duplicate-group`,
+      { method: "DELETE" }
+    ),
   markBok: (id: string | number) => request<{ ok: boolean }>(`/api/articles/${id}/mark-bok`, { method: "POST" }),
   analyze: (id: string | number) => request(`/api/articles/${id}/ai/analyze`, { method: "POST" }),
   ingest: () => request<{ results: unknown[] }>("/api/ingest/run", { method: "POST" }),
   runPostprocess: () => request<{ ok: boolean }>("/api/postprocess/run", { method: "POST" }),
+  runBodyPostprocess: () => request<{ ok: boolean }>("/api/postprocess/body/run", { method: "POST" }),
+  runAiPostprocess: () => request<{ ok: boolean }>("/api/postprocess/ai/run", { method: "POST" }),
   postprocessStatus: () => request<PostprocessStatus>("/api/postprocess/status"),
-  ingestLogs: () => request<FetchLog[]>("/api/ingest/logs"),
+  ingestLogs: (params?: ArticleParams) => request<FetchLogPage>(`/api/ingest/logs${toQuery(params)}`),
   ingestSchedule: () => request<IngestSchedule>("/api/ingest/schedule"),
   companyAnalysis: (payload: { company_name: string; symbol?: string; market?: string }) => request<CompanyAnalysis>("/api/company-analysis", { method: "POST", body: JSON.stringify(payload) }),
   startCompanyAnalysis: (payload: { company_name: string; symbol?: string; market?: string }) => request<{ job_id: string }>("/api/company-analysis/jobs", { method: "POST", body: JSON.stringify(payload) }),
@@ -57,6 +67,7 @@ export const api = {
   generateReport: () => request<Report>("/api/reports/generate", { method: "POST" }),
   finalReport: (date: string) => request<Report>(`/api/reports/final/${date}`),
   finalizeReport: () => request<Report>("/api/reports/finalize", { method: "POST" }),
+  sendLatestReportEmail: () => request<{ ok: boolean; report_date?: string; recipients?: string[]; formats?: string[]; message?: string }>("/api/reports/email/send-latest", { method: "POST" }),
   sources: () => request<Source[]>("/api/sources"),
   createSource: (source: Partial<Source>) => request<Source>("/api/sources", { method: "POST", body: JSON.stringify(source) }),
   updateSource: (id: number, source: Partial<Source>) => request<Source>(`/api/sources/${id}`, { method: "PUT", body: JSON.stringify(source) }),

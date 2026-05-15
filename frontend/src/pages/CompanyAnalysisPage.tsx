@@ -265,6 +265,14 @@ export default function CompanyAnalysisPage() {
   const [market, setMarket] = useState("KR");
   const [jobId, setJobId] = useState<string | null>(null);
   const [lastResult, setLastResult] = useState<CompanyAnalysis | null>(null);
+  const [accessWarning, setAccessWarning] = useState("");
+  const { data: settings } = useQuery({ queryKey: ["settings"], queryFn: api.settings });
+  const aiProvider = settings?.ai_provider || "disabled";
+  const companyAnalysisBlocked = settings ? aiProvider === "disabled" || !settings.enable_ai_boost : false;
+  const blockReason =
+    aiProvider === "disabled"
+      ? "AI 기능이 비활성화되어 기업 분석을 사용할 수 없습니다."
+      : "AI Boost 기능 비활성화로 기업 분석을 사용할 수 없습니다.";
 
   const startMutation = useMutation({
     mutationFn: () => api.startCompanyAnalysis({ company_name: companyName.trim(), market }),
@@ -295,11 +303,47 @@ export default function CompanyAnalysisPage() {
 
   function submit(event: FormEvent) {
     event.preventDefault();
+    setAccessWarning("");
+    if (companyAnalysisBlocked) {
+      setAccessWarning(blockReason);
+      return;
+    }
     if (canSubmit) startMutation.mutate();
   }
 
   const currentError = startMutation.isError ? (startMutation.error as Error).message : jobQuery.data?.error;
   const result = jobQuery.data?.result || lastResult;
+
+  if (companyAnalysisBlocked) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-semibold">기업 분석</h1>
+          <p className="mt-1 text-sm text-muted-foreground">기업 분석은 AI와 AI Boost가 모두 켜져 있을 때 사용할 수 있습니다.</p>
+        </div>
+
+        <Card className="border-amber-200 bg-amber-50 p-6 text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-100">
+          <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+            <div>
+              <div className="mb-3 inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-100">
+                <ShieldAlert size={22} />
+              </div>
+              <h2 className="text-xl font-semibold">{blockReason}</h2>
+              <p className="mt-2 max-w-2xl text-sm leading-6">
+                기사 상세의 AI 분석 버튼은 건별 실행 기능이라 계속 사용할 수 있습니다. 기업 분석은 여러 기사와 시세 정보를 묶어 해석하는 무거운 작업이라 AI 기능과 AI Boost를 모두 켠 경우에만 열어둡니다.
+              </p>
+            </div>
+            <Link
+              to="/settings"
+              className="inline-flex h-9 shrink-0 items-center justify-center rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground transition hover:opacity-90"
+            >
+              설정으로 이동
+            </Link>
+          </div>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -321,6 +365,11 @@ export default function CompanyAnalysisPage() {
             {isRunning ? "분석 중" : "분석"}
           </Button>
         </form>
+        {accessWarning && (
+          <div className="mt-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200">
+            {accessWarning} 설정의 AI 탭에서 AI Boost를 활성화하면 기업 분석을 사용할 수 있습니다. 유료 API를 연결한 경우 비용이 발생할 수 있습니다.
+          </div>
+        )}
         <div className="mt-3 text-xs leading-5 text-muted-foreground">
           종목 코드는 입력하지 않아도 됩니다. 알려진 기업명은 자동 매핑하며, 매핑되지 않는 기업은 기사 분석부터 보여줍니다.
         </div>

@@ -59,6 +59,8 @@ type ReportSummary = {
   bok_important?: ReportArticle[];
   market_checklist?: MarketChecklistItem[];
   signal_board?: SignalItem[];
+  report_ai_notice?: string;
+  report_ai_bullets?: string[];
 };
 
 type ReportExportFormat = "pdf" | "md";
@@ -88,6 +90,7 @@ export default function ReportsPage() {
   const [isExportingHtml, setIsExportingHtml] = useState(false);
   const reportCaptureRef = useRef<HTMLDivElement | null>(null);
   const pdfPagesRef = useRef<HTMLDivElement | null>(null);
+  const { data: settings } = useQuery({ queryKey: ["settings"], queryFn: api.settings });
   const { data: todayReport, isLoading } = useQuery({ queryKey: ["todayReport"], queryFn: api.todayReport });
   const { data: reports = [] } = useQuery({ queryKey: ["reports"], queryFn: api.reports });
   const { data: selectedReport } = useQuery({
@@ -117,6 +120,9 @@ export default function ReportsPage() {
   const bokImportantArticles = summary.bok_important || [];
   const isExporting = isExportingPdf || isExportingHtml;
   const isSavedReportView = Boolean(selectedDate && selectedReport);
+  const aiBoostLimited = (settings?.ai_provider || "disabled") !== "disabled" && !settings?.enable_ai_boost;
+  const realtimeBoostLimited = aiBoostLimited && report?.status !== "final";
+  const finalAiApplied = report?.status === "final" && report.model_provider !== "rule_based";
   const reportViewLabel = isSavedReportView ? "저장 보고서" : report?.status === "final" ? "오늘 확정 저장본" : "실시간 보고서";
 
   const openRealtimeReport = () => {
@@ -241,6 +247,17 @@ export default function ReportsPage() {
             </Button>
           </div>
         </div>
+
+        {realtimeBoostLimited && (
+          <Card className="border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-800 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200">
+            AI Boost 기능 비활성화로 실시간 보고서 갱신은 규칙 기반으로 표시합니다. 최종 저장본 생성 시점에는 보고서 대표 인사이트에 한해 AI를 1회 사용할 수 있습니다.
+          </Card>
+        )}
+        {finalAiApplied && (
+          <Card className="border-emerald-200 bg-emerald-50 p-4 text-sm leading-6 text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950 dark:text-emerald-200">
+            {summary.report_ai_notice || "최종 저장본에 AI 기반 대표 인사이트가 반영되었습니다."}
+          </Card>
+        )}
 
         <Card className="overflow-hidden">
           <div className="border-b border-border bg-muted/50 px-5 py-4">

@@ -40,7 +40,23 @@ class SettingsRead(BaseModel):
     article_retention_days: int
     report_retention_days: int
     report_final_time: str
+    report_email_enabled: bool
+    report_email_time: str
+    report_email_recipients: list[str]
+    report_email_formats: list[str]
+    smtp_host: str
+    smtp_port: int
+    smtp_username: str
+    smtp_from_email: str
+    smtp_from_name: str
+    smtp_use_tls: bool
+    smtp_use_ssl: bool
+    smtp_password_configured: bool
     enable_browser_notifications: bool
+    enable_collect_domestic: bool
+    enable_collect_global: bool
+    enable_collect_bok: bool
+    enable_ai_boost: bool
     enable_ai_summary_postprocess: bool
     enable_title_translation_postprocess: bool
 
@@ -52,6 +68,23 @@ class SettingsUpdate(BaseModel):
     article_retention_days: int | None = None
     report_retention_days: int | None = None
     report_final_time: str | None = None
+    report_email_enabled: bool | None = None
+    report_email_time: str | None = None
+    report_email_recipients: list[str] | None = None
+    report_email_formats: list[str] | None = None
+    smtp_host: str | None = None
+    smtp_port: int | None = None
+    smtp_username: str | None = None
+    smtp_password: str | None = None
+    smtp_password_clear: bool | None = None
+    smtp_from_email: str | None = None
+    smtp_from_name: str | None = None
+    smtp_use_tls: bool | None = None
+    smtp_use_ssl: bool | None = None
     enable_browser_notifications: bool | None = None
+    enable_collect_domestic: bool | None = None
+    enable_collect_global: bool | None = None
+    enable_collect_bok: bool | None = None
+    enable_ai_boost: bool | None = None
     enable_ai_summary_postprocess: bool | None = None
     enable_title_translation_postprocess: bool | None = None

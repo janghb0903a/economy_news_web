@@ -7,7 +7,6 @@ from app.api.routes import router
 from app.db.init_db import init_db
 from app.db.session import SessionLocal
 from app.services.ingest_scheduler import shutdown_ingest_scheduler, start_ingest_scheduler
-from app.services.postprocess import schedule_post_processing
 
 
 @asynccontextmanager
@@ -18,7 +17,6 @@ async def lifespan(app: FastAPI):
     finally:
         db.close()
     start_ingest_scheduler()
-    schedule_post_processing()
     yield
     shutdown_ingest_scheduler()
 

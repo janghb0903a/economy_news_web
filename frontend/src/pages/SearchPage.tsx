@@ -1,12 +1,12 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
 import ArticleGrid from "../components/ArticleGrid";
 import { api } from "../lib/api";
-import { GhostButton, Input, Select } from "../components/ui";
+import { ClearableInput, GhostButton, Input, Select } from "../components/ui";
 
 export default function SearchPage() {
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const initialFilters = {
     q: searchParams.get("q") || "",
     region: searchParams.get("region") || "",
@@ -21,8 +21,21 @@ export default function SearchPage() {
   };
   const [filters, setFilters] = useState<Record<string, string>>(initialFilters);
   const [submitted, setSubmitted] = useState(filters);
+  const searchParamKey = searchParams.toString();
   const { data, isLoading } = useQuery({ queryKey: ["search", submitted], queryFn: () => api.articles({ ...submitted, limit: 80 }) });
   const set = (key: string, value: string) => setFilters((current) => ({ ...current, [key]: value }));
+  useEffect(() => {
+    setFilters(initialFilters);
+    setSubmitted(initialFilters);
+  }, [searchParamKey]);
+  const submitSearch = () => {
+    const params = new URLSearchParams();
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value) params.set(key, value);
+    });
+    setSearchParams(params);
+    setSubmitted(filters);
+  };
 
   return (
     <div className="space-y-4">
@@ -32,8 +45,8 @@ export default function SearchPage() {
       </div>
       <div className="sticky top-[65px] z-30 rounded-lg border border-border bg-background/95 p-3 shadow-sm backdrop-blur">
         <div className="grid gap-2 md:grid-cols-4 xl:grid-cols-6">
-          <Input placeholder="검색어" value={filters.q} onChange={(e) => set("q", e.target.value)} />
-          <Input placeholder="언론사" value={filters.source} onChange={(e) => set("source", e.target.value)} />
+          <ClearableInput placeholder="검색어" value={filters.q} onChange={(e) => set("q", e.target.value)} onClear={() => set("q", "")} />
+          <ClearableInput placeholder="언론사" value={filters.source} onChange={(e) => set("source", e.target.value)} onClear={() => set("source", "")} />
           <Input type="date" value={filters.from_date} onChange={(e) => set("from_date", e.target.value)} />
           <Input type="date" value={filters.to_date} onChange={(e) => set("to_date", e.target.value)} />
           <Select value={filters.region} onChange={(e) => set("region", e.target.value)}>
@@ -65,7 +78,7 @@ export default function SearchPage() {
             <option value="true">읽음</option>
             <option value="false">안 읽음</option>
           </Select>
-          <GhostButton className="md:col-span-2 xl:col-span-1" onClick={() => setSubmitted(filters)}>
+          <GhostButton className="md:col-span-2 xl:col-span-1" onClick={submitSearch}>
             검색
           </GhostButton>
         </div>

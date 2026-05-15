@@ -1,32 +1,24 @@
 import { BarChart3, ChevronDown, Copyright, FileText, Moon, Newspaper, Settings, Sun, TrendingUp, X } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { COPYRIGHT_HOLDERS, COPYRIGHT_LINE, COPYRIGHT_NOTICE } from "../lib/copyright";
+import { api } from "../lib/api";
 import { cn } from "../lib/utils";
 
-const navGroups = [
-  {
-    label: "메인",
-    icon: BarChart3,
-    paths: ["/", "/indicators", "/company-analysis"],
-    items: [
-      { to: "/", label: "대시보드", description: "뉴스 요약과 수집 현황" },
-      { to: "/indicators", label: "주요지표", description: "경제 지표 일정과 시장 영향" },
-      { to: "/company-analysis", label: "기업 분석", description: "기사와 주가 기반 기업 분석" }
-    ]
-  },
-  {
-    label: "기사",
-    icon: Newspaper,
-    paths: ["/domestic", "/global", "/bok", "/search"],
-    items: [
-      { to: "/domestic", label: "국내", description: "국내 경제 기사" },
-      { to: "/global", label: "해외", description: "해외 경제 기사" },
-      { to: "/bok", label: "한국은행", description: "BOK 관련 기사" },
-      { to: "/search", label: "검색", description: "전체 기사 검색" }
-    ]
-  }
-];
+type NavItem = {
+  to: string;
+  label: string;
+  description: string;
+  badge?: string;
+};
+
+type NavGroup = {
+  label: string;
+  icon: typeof BarChart3;
+  paths: string[];
+  items: NavItem[];
+};
 
 const directLinks = [
   { to: "/reports", label: "보고서", icon: FileText },
@@ -35,8 +27,46 @@ const directLinks = [
 
 export default function Layout() {
   const location = useLocation();
-  const [dark, setDark] = useState(() => localStorage.getItem("theme") === "dark");
+  const { data: settings } = useQuery({ queryKey: ["settings"], queryFn: api.settings });
+  const [dark, setDark] = useState(() => localStorage.getItem("theme") !== "light");
   const [copyrightOpen, setCopyrightOpen] = useState(false);
+
+  const navGroups = useMemo<NavGroup[]>(() => {
+    const companyAnalysisEnabled = settings ? settings.ai_provider !== "disabled" && settings.enable_ai_boost : false;
+    const mainItems: NavItem[] = [
+      { to: "/", label: "대시보드", description: "뉴스 요약과 수집 현황" },
+      { to: "/indicators", label: "주요지표", description: "경제 지표 일정과 시장 영향" },
+      companyAnalysisEnabled ? { to: "/company-analysis", label: "기업 분석", description: "기사와 주가 기반 기업 분석" } : null
+    ].filter(Boolean) as NavItem[];
+
+    const articleItems: NavItem[] = [
+      settings?.enable_collect_domestic !== false
+        ? { to: "/domestic", label: "국내", description: "국내 경제 기사" }
+        : null,
+      settings?.enable_collect_global !== false
+        ? { to: "/global", label: "해외", description: "해외 경제 기사" }
+        : null,
+      settings?.enable_collect_domestic !== false
+        ? { to: "/bok", label: "한국은행", description: "AI 기반 BOK 연관 기사 분류", badge: "AI" }
+        : null,
+      { to: "/search", label: "검색", description: "전체 기사 검색" }
+    ].filter(Boolean) as NavItem[];
+
+    return [
+      {
+        label: "메인",
+        icon: BarChart3,
+        paths: ["/", "/indicators", "/company-analysis"],
+        items: mainItems
+      },
+      {
+        label: "기사",
+        icon: Newspaper,
+        paths: ["/domestic", "/global", "/bok", "/search"],
+        items: articleItems
+      }
+    ];
+  }, [settings?.ai_provider, settings?.enable_ai_boost, settings?.enable_collect_domestic, settings?.enable_collect_global]);
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", dark);
@@ -79,7 +109,14 @@ export default function Layout() {
                         to={item.to}
                         className={cn("block rounded-md px-3 py-2 hover:bg-muted", location.pathname === item.to && "bg-muted")}
                       >
-                        <div className="text-sm font-medium text-foreground">{item.label}</div>
+                        <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+                          <span>{item.label}</span>
+                          {item.badge && (
+                            <span className="inline-flex h-5 items-center rounded-full border border-violet-200 bg-violet-100 px-2 text-[10px] font-bold text-violet-800 dark:border-violet-900 dark:bg-violet-950 dark:text-violet-200">
+                              {item.badge}
+                            </span>
+                          )}
+                        </div>
                         <div className="mt-0.5 text-xs text-muted-foreground">{item.description}</div>
                       </Link>
                     ))}

@@ -22,6 +22,9 @@ export type Article = {
   related_group_id: string;
   related_group_label: string;
   related_group_size: number;
+  related_group_representative_id: number | null;
+  is_related_representative: boolean;
+  related_group_manual: boolean;
 };
 
 export type ArticleDetail = Article & {
@@ -80,6 +83,15 @@ export type FetchLog = {
   fetched_count: number;
   new_count: number;
   created_at: string;
+};
+
+export type FetchLogPage = {
+  items: FetchLog[];
+  total: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+  hours: number;
 };
 
 export type PostprocessStatus = {
@@ -258,7 +270,25 @@ export type Settings = {
   article_retention_days: number;
   report_retention_days: number;
   report_final_time: string;
+  report_email_enabled: boolean;
+  report_email_time: string;
+  report_email_recipients: string[];
+  report_email_formats: string[];
+  smtp_host: string;
+  smtp_port: number;
+  smtp_username: string;
+  smtp_password?: string;
+  smtp_password_clear?: boolean;
+  smtp_from_email: string;
+  smtp_from_name: string;
+  smtp_use_tls: boolean;
+  smtp_use_ssl: boolean;
+  smtp_password_configured: boolean;
   enable_browser_notifications: boolean;
+  enable_collect_domestic: boolean;
+  enable_collect_global: boolean;
+  enable_collect_bok: boolean;
+  enable_ai_boost: boolean;
   enable_ai_summary_postprocess: boolean;
   enable_title_translation_postprocess: boolean;
 };

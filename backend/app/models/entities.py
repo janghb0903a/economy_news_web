@@ -57,6 +57,8 @@ class Article(Base):
     tags_text: Mapped[str] = mapped_column(Text, default="")
     is_saved: Mapped[bool] = mapped_column(Boolean, default=False)
     is_read: Mapped[bool] = mapped_column(Boolean, default=False)
+    duplicate_group_id: Mapped[str] = mapped_column(String(120), default="")
+    duplicate_group_representative: Mapped[bool] = mapped_column(Boolean, default=False)
 
     source: Mapped[Source | None] = relationship(back_populates="articles")
     ai_annotation: Mapped["ArticleAIAnnotation | None"] = relationship(back_populates="article", cascade="all, delete-orphan")

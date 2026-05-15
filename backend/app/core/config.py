@@ -33,11 +33,29 @@ class Settings(BaseSettings):
     kr_stock_provider: str = "auto"
     kr_stock_enable_web_fallback: bool = True
     news_fetch_interval_minutes: int = 10
-    article_retention_days: int = 180
+    article_retention_days: int = 14
+    ingest_recent_days: int = 5
     report_retention_days: int = 30
     report_final_time: str = "18:00"
+    report_email_enabled: bool = False
+    report_email_time: str = "18:10"
+    report_email_recipients: str = ""
+    report_email_formats: str = "md,html"
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_username: str = ""
+    smtp_password: str = ""
+    smtp_from_email: str = ""
+    smtp_from_name: str = "Economy News Dashboard"
+    smtp_use_tls: bool = True
+    smtp_use_ssl: bool = False
+    settings_encryption_key: str = "local-economy-news-dashboard"
     enable_browser_notifications: bool = True
-    enable_ai_summary_postprocess: bool = False
+    enable_collect_domestic: bool = True
+    enable_collect_global: bool = True
+    enable_collect_bok: bool = True
+    enable_ai_boost: bool = False
+    enable_ai_summary_postprocess: bool = True
     enable_title_translation_postprocess: bool = False
     postprocess_recent_hours: int = 12
     postprocess_batch_size: int = 30
@@ -50,6 +68,7 @@ class Settings(BaseSettings):
         env_file=ROOT_DIR / ".env",
         env_file_encoding="utf-8",
         extra="ignore",
+        protected_namespaces=("model_",),
     )
 
 

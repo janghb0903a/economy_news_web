@@ -50,6 +50,9 @@ class ArticleListItem(BaseModel):
     related_group_id: str = ""
     related_group_label: str = ""
     related_group_size: int = 1
+    related_group_representative_id: int | None = None
+    is_related_representative: bool = False
+    related_group_manual: bool = False
 
 
 class ArticleDetail(ArticleListItem):
@@ -82,6 +85,10 @@ class ArticleQuery(BaseModel):
 class ArticleListResponse(BaseModel):
     items: list[ArticleListItem]
     total: int
+
+
+class DuplicateGroupMergeRequest(BaseModel):
+    target_article_id: int
 
 
 class DashboardSummary(BaseModel):

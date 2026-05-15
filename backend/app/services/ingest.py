@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
 from app.core.time import kst_now
-from app.models.entities import Article, FetchLog, NotificationLog, Source
+from app.models.entities import AppSetting, Article, FetchLog, NotificationLog, Source
 from app.services.bok_matcher import BOKMatcher
 from app.services.classifier import classify_category, extract_rule_keywords, importance_score
 from app.services.dedupe import canonicalize_url, normalized_title_hash
@@ -29,6 +29,18 @@ DOMESTIC_TOPIC_CATEGORIES = {
 
 def compact_text(value: str) -> str:
     return re.sub(r"\s+", "", value or "").strip().lower()
+
+
+def recent_ingest_cutoff():
+    days = max(1, get_settings().ingest_recent_days)
+    return kst_now() - timedelta(days=days)
+
+
+def should_skip_old_entry(entry: FeedEntry, page_published_at=None) -> bool:
+    published_at = entry.published_at or page_published_at
+    if published_at is None:
+        return False
+    return published_at < recent_ingest_cutoff()
 
 
 def is_low_quality_feed_entry(entry: FeedEntry, content: str = "") -> bool:
@@ -68,7 +80,11 @@ async def ingest_source(db: Session, source: Source, enrich_body: bool = False) 
 
     matcher = BOKMatcher()
     new_count = 0
+    skipped_old_count = 0
     for entry in entries:
+        if should_skip_old_entry(entry):
+            skipped_old_count += 1
+            continue
         canonical_url = canonicalize_url(entry.url)
         title_hash = normalized_title_hash(entry.title)
         if db.query(Article.id).filter((Article.canonical_url == canonical_url) | (Article.title_hash == title_hash)).first():
@@ -77,6 +93,9 @@ async def ingest_source(db: Session, source: Source, enrich_body: bool = False) 
         content, html, page_published_at = ("", "", None)
         if enrich_body:
             content, html, page_published_at = await extract_article_body(entry.url)
+        if should_skip_old_entry(entry, page_published_at):
+            skipped_old_count += 1
+            continue
         if is_low_quality_feed_entry(entry, content):
             continue
         content_for_rules = content or entry.summary
@@ -120,18 +139,37 @@ async def ingest_source(db: Session, source: Source, enrich_body: bool = False) 
         except IntegrityError:
             db.rollback()
 
-    db.add(FetchLog(source_id=source.id, source_name=source.name, status="ok", fetched_count=len(entries), new_count=new_count))
+    message = ""
+    if skipped_old_count:
+        message = f"최근 {get_settings().ingest_recent_days}일 밖 기사 {skipped_old_count}건은 저장하지 않았습니다."
+    db.add(FetchLog(source_id=source.id, source_name=source.name, status="ok", message=message, fetched_count=len(entries), new_count=new_count))
     db.commit()
     return {"source": source.name, "fetched": len(entries), "new": new_count, "error": None}
 
 
 async def ingest_all(db: Session) -> list[dict]:
-    sources = db.query(Source).filter(Source.enabled.is_(True)).all()
+    sources = [source for source in db.query(Source).filter(Source.enabled.is_(True)).all() if source_collection_enabled(db, source)]
     results = []
     for source in sources:
         results.append(await ingest_source(db, source))
     prune_old_articles(db)
     return results
+
+
+def setting_bool(db: Session, key: str, default: bool) -> bool:
+    row = db.get(AppSetting, key)
+    if row is None:
+        return default
+    return row.value.lower() == "true"
+
+
+def source_collection_enabled(db: Session, source: Source) -> bool:
+    settings = get_settings()
+    if source.region == "domestic":
+        return setting_bool(db, "enable_collect_domestic", settings.enable_collect_domestic)
+    if source.region == "global":
+        return setting_bool(db, "enable_collect_global", settings.enable_collect_global)
+    return True
 
 
 def prune_old_articles(db: Session) -> None:

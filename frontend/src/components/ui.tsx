@@ -1,4 +1,5 @@
 import type { ButtonHTMLAttributes, HTMLAttributes, InputHTMLAttributes, SelectHTMLAttributes } from "react";
+import { CircleX } from "lucide-react";
 import { cn } from "../lib/utils";
 
 export function Card({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
@@ -30,7 +31,32 @@ export function GhostButton({ className, ...props }: ButtonHTMLAttributes<HTMLBu
 }
 
 export function Input({ className, ...props }: InputHTMLAttributes<HTMLInputElement>) {
-  return <input className={cn("h-9 rounded-md border border-border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-primary/30", className)} {...props} />;
+  return <input className={cn("h-9 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-primary/30", className)} {...props} />;
+}
+
+type ClearableInputProps = InputHTMLAttributes<HTMLInputElement> & {
+  onClear: () => void;
+};
+
+export function ClearableInput({ className, onClear, value, disabled, readOnly, ...props }: ClearableInputProps) {
+  const hasValue = typeof value === "string" ? value.length > 0 : Boolean(value);
+
+  return (
+    <div className="relative w-full">
+      <Input className={cn("pr-9", className)} value={value} disabled={disabled} readOnly={readOnly} {...props} />
+      {hasValue && !disabled && !readOnly ? (
+        <button
+          type="button"
+          aria-label="검색어 지우기"
+          className="absolute right-2.5 top-1/2 inline-flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground/75 transition hover:text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+          onMouseDown={(event) => event.preventDefault()}
+          onClick={onClear}
+        >
+          <CircleX size={14} strokeWidth={1.8} />
+        </button>
+      ) : null}
+    </div>
+  );
 }
 
 export function Select({ className, ...props }: SelectHTMLAttributes<HTMLSelectElement>) {

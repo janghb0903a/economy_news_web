@@ -38,6 +38,10 @@ def create_fts_tables() -> None:
         columns = [row[1] for row in conn.execute(text("PRAGMA table_info(articles)")).fetchall()]
         if "translated_title" not in columns:
             conn.execute(text("ALTER TABLE articles ADD COLUMN translated_title TEXT DEFAULT ''"))
+        if "duplicate_group_id" not in columns:
+            conn.execute(text("ALTER TABLE articles ADD COLUMN duplicate_group_id VARCHAR(120) DEFAULT ''"))
+        if "duplicate_group_representative" not in columns:
+            conn.execute(text("ALTER TABLE articles ADD COLUMN duplicate_group_representative BOOLEAN DEFAULT 0"))
         for statement in statements:
             conn.execute(text(statement))
 
